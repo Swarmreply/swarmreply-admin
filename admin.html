@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SwarmReply Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --k:#0a0a0a;--w:#fff;--g:#f5c842;--gd:#d4a515;
+  --of:#f8f7f4;--bd:#e4e0d8;--mu:#7a7670;--tx:#1a1a18;
+  --gr:#1a6b45;--re:#c0392b;--bl:#1d4ed8;
+  --sidebar:220px;
+}
+html{height:100%;font-size:14px}
+body{font-family:'DM Sans',sans-serif;background:var(--of);color:var(--tx);
+     display:flex;min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* ── LOGIN ── */
+#login-screen{position:fixed;inset:0;background:var(--k);display:flex;
+  align-items:center;justify-content:center;z-index:1000;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='52'%3E%3Cpolygon points='30,2 56,16 56,44 30,58 4,44 4,16' fill='none' stroke='%23ffffff' stroke-width='1' opacity='0.06'/%3E%3C/svg%3E")}
+.login-card{background:#111;border:1px solid #2a2a28;border-radius:20px;
+  padding:44px 40px;width:100%;max-width:400px;box-shadow:0 32px 80px rgba(0,0,0,.5)}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;
+  font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:#fff}
+.login-hed{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;
+  color:#fff;margin-bottom:6px}
+.login-sub{font-size:.82rem;color:rgba(255,255,255,.4);margin-bottom:28px}
+.lfl{display:block;font-size:.62rem;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:6px}
+.lfi{width:100%;padding:11px 14px;background:#1a1a18;border:1.5px solid #2a2a28;
+  border-radius:10px;color:#fff;font-size:.875rem;font-family:inherit;outline:none;
+  transition:border-color .15s}
+.lfi:focus{border-color:var(--g)}
+.lfrow{margin-bottom:16px}
+.login-btn{width:100%;padding:13px;border:none;border-radius:50px;
+  background:var(--g);color:var(--k);font-weight:700;font-size:.9rem;
+  font-family:inherit;cursor:pointer;margin-top:4px;transition:all .15s}
+.login-btn:hover{background:var(--gd)}
+#login-err{display:none;background:rgba(192,57,43,.15);border:1px solid rgba(192,57,43,.3);
+  border-radius:8px;padding:9px 12px;font-size:.78rem;color:#f87171;margin-bottom:14px}
+
+/* ── SIDEBAR ── */
+#sidebar{width:var(--sidebar);background:var(--k);flex-shrink:0;
+  position:fixed;top:0;left:0;bottom:0;display:flex;flex-direction:column;
+  z-index:100;border-right:1px solid #1a1a18}
+.sb-logo{padding:20px 20px 16px;display:flex;align-items:center;gap:9px;
+  font-family:'Playfair Display',serif;font-size:.95rem;font-weight:900;color:#fff;
+  border-bottom:1px solid #1a1a18}
+.sb-section{padding:16px 12px 8px;font-size:.6rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.2)}
+.sbi{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;
+  margin:1px 8px;cursor:pointer;font-size:.82rem;font-weight:500;
+  color:rgba(255,255,255,.5);transition:all .15s;user-select:none}
+.sbi:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.8)}
+.sbi.active{background:rgba(245,200,66,.12);color:var(--g)}
+.sbi-ic{width:18px;text-align:center;font-size:.9rem;flex-shrink:0}
+.sb-badge{background:var(--re);color:#fff;font-size:.6rem;font-weight:700;
+  padding:1px 6px;border-radius:50px;margin-left:auto}
+.sb-bottom{margin-top:auto;padding:16px;border-top:1px solid #1a1a18}
+.sb-user{display:flex;align-items:center;gap:10px}
+.sb-avatar{width:32px;height:32px;border-radius:50%;background:var(--g);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:.75rem;color:var(--k);flex-shrink:0}
+.sb-uname{font-size:.78rem;font-weight:600;color:#fff}
+.sb-urole{font-size:.68rem;color:rgba(255,255,255,.3)}
+.logout-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.3);
+  font-size:.78rem;margin-left:auto;font-family:inherit;padding:4px;transition:color .15s}
+.logout-btn:hover{color:rgba(255,255,255,.7)}
+
+/* ── MAIN ── */
+#main{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid var(--bd);padding:0 28px;height:58px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:900;color:var(--k)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.tb-search{padding:8px 14px;border:1.5px solid var(--bd);border-radius:50px;
+  font-size:.82rem;font-family:inherit;outline:none;width:220px;
+  transition:border-color .15s;color:var(--tx)}
+.tb-search:focus{border-color:var(--k)}
+.content{padding:28px;flex:1}
+
+/* ── STAT CARDS ── */
+.stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:18px 20px}
+.stat-label{font-size:.67rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mu);margin-bottom:8px}
+.stat-val{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;
+  color:var(--k);line-height:1}
+.stat-sub{font-size:.72rem;color:var(--mu);margin-top:5px}
+.stat-card.gold{border-top:3px solid var(--g)}
+.stat-card.green{border-top:3px solid var(--gr)}
+.stat-card.red{border-top:3px solid var(--re)}
+
+/* ── TABLE ── */
+.card{background:#fff;border:1px solid var(--bd);border-radius:16px;overflow:hidden}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:space-between;gap:12px}
+.card-title{font-weight:700;font-size:.9rem;color:var(--k)}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.filter-btn{padding:5px 12px;border-radius:50px;border:1.5px solid var(--bd);
+  background:#fff;font-size:.72rem;font-weight:600;color:var(--mu);
+  cursor:pointer;font-family:inherit;transition:all .15s}
+.filter-btn:hover{border-color:var(--k);color:var(--k)}
+.filter-btn.active{background:var(--k);color:#fff;border-color:var(--k)}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 16px;text-align:left;font-size:.62rem;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--mu);
+  background:var(--of);border-bottom:1px solid var(--bd)}
+td{padding:12px 16px;font-size:.82rem;border-bottom:1px solid var(--of);
+  vertical-align:middle;color:var(--tx)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:50px;
+  font-size:.67rem;font-weight:700;white-space:nowrap}
+.badge-green{background:#e8f5ef;color:var(--gr)}
+.badge-red{background:#fef2f2;color:var(--re)}
+.badge-gold{background:rgba(245,200,66,.15);color:#92690a}
+.badge-blue{background:#eff6ff;color:var(--bl)}
+.badge-gray{background:var(--of);color:var(--mu)}
+
+/* ── ACTION BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;
+  border-radius:50px;border:1.5px solid var(--bd);background:#fff;
+  font-size:.75rem;font-weight:600;color:var(--tx);cursor:pointer;
+  font-family:inherit;transition:all .15s;white-space:nowrap}
+.btn:hover{border-color:var(--k);background:var(--k);color:#fff}
+.btn-gold{background:var(--g);color:var(--k);border-color:var(--g)}
+.btn-gold:hover{background:var(--gd);border-color:var(--gd);color:var(--k)}
+.btn-sm{padding:4px 10px;font-size:.7rem}
+.btn-danger{border-color:#fecaca;color:var(--re)}
+.btn-danger:hover{background:var(--re);border-color:var(--re);color:#fff}
+.btn-ghost{border-color:transparent;background:transparent}
+.btn-ghost:hover{background:var(--of);border-color:var(--bd);color:var(--tx)}
+
+/* ── PAGES ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;
+  display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:20px;padding:32px;max-width:520px;width:100%;
+  max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.15)}
+.modal-hed{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900;
+  color:var(--k);margin-bottom:6px}
+.modal-sub{font-size:.82rem;color:var(--mu);margin-bottom:24px;line-height:1.65}
+.frow{margin-bottom:16px}
+.fl{display:block;font-size:.62rem;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--mu);margin-bottom:5px}
+.fi{width:100%;padding:10px 13px;border:1.5px solid var(--bd);border-radius:10px;
+  font-size:.875rem;font-family:inherit;color:var(--tx);outline:none;
+  transition:border-color .15s;background:#fff}
+.fi:focus{border-color:var(--k)}
+.fsel{width:100%;padding:10px 13px;border:1.5px solid var(--bd);border-radius:10px;
+  font-size:.875rem;font-family:inherit;background:#fff;outline:none;cursor:pointer}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:24px;
+  padding-top:20px;border-top:1px solid var(--bd)}
+
+/* ── CUSTOMER DETAIL ── */
+.detail-grid{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start}
+.detail-section{background:#fff;border:1px solid var(--bd);border-radius:14px;
+  overflow:hidden;margin-bottom:16px}
+.detail-section-header{padding:14px 18px;border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:space-between}
+.detail-section-title{font-weight:700;font-size:.84rem;color:var(--k)}
+.detail-rows{padding:4px 0}
+.detail-row{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 18px;border-bottom:1px solid var(--of);font-size:.82rem}
+.detail-row:last-child{border-bottom:none}
+.detail-row-label{color:var(--mu);font-weight:500}
+.detail-row-val{color:var(--tx);font-weight:600;text-align:right}
+
+/* ── TIMELINE ── */
+.timeline{padding:4px 18px}
+.tl-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--of)}
+.tl-item:last-child{border-bottom:none}
+.tl-dot{width:8px;height:8px;border-radius:50%;background:var(--bd);flex-shrink:0;margin-top:5px}
+.tl-dot.green{background:var(--gr)}
+.tl-dot.gold{background:var(--g)}
+.tl-dot.red{background:var(--re)}
+.tl-text{font-size:.78rem;color:var(--tx);line-height:1.5}
+.tl-time{font-size:.68rem;color:var(--mu);margin-top:2px}
+
+/* ── IMPERSONATION BANNER ── */
+#impersonate-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:999;
+  background:var(--re);color:#fff;padding:10px 20px;
+  display:none;align-items:center;justify-content:space-between;font-size:.82rem;font-weight:600}
+
+/* ── NOTES ── */
+.notes-area{width:100%;padding:12px;border:1.5px solid var(--bd);border-radius:10px;
+  font-size:.82rem;font-family:inherit;resize:vertical;outline:none;
+  transition:border-color .15s;line-height:1.6;min-height:80px}
+.notes-area:focus{border-color:var(--k)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1200px){.stat-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){
+  #sidebar{transform:translateX(-100%);transition:transform .2s}
+  #main{margin-left:0}
+  .detail-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="26" height="26" viewBox="0 0 100 100" fill="none">
+        <ellipse cx="50" cy="62" rx="20" ry="24" fill="#f5c842"/>
+        <rect x="30" y="54" width="40" height="7" rx="2" fill="#0a0a0a"/>
+        <rect x="30" y="65" width="40" height="6" rx="2" fill="#0a0a0a"/>
+        <circle cx="50" cy="34" r="14" fill="#f5c842"/>
+        <ellipse cx="50" cy="21" rx="18" ry="4" fill="#fff" opacity=".5"/>
+        <path d="M34 21 Q36 9 50 9 Q64 9 66 21 Z" fill="#fff" opacity=".5"/>
+      </svg>
+      SwarmReply Admin
+    </div>
+    <div class="login-hed">Command centre.</div>
+    <div class="login-sub">Restricted access — authorised personnel only</div>
+    <div id="login-err">Invalid credentials</div>
+    <form onsubmit="handleLogin(event)">
+      <div class="lfrow">
+        <label class="lfl">Email</label>
+        <input class="lfi" type="email" id="admin-email" placeholder="admin@swarmreply.com" required autocomplete="off">
+      </div>
+      <div class="lfrow">
+        <label class="lfl">Password</label>
+        <input class="lfi" type="password" id="admin-pass" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="login-btn">Sign in →</button>
+    </form>
+  </div>
+</div>
+
+<!-- ══ SIDEBAR ══ -->
+<div id="sidebar">
+  <div class="sb-logo">
+    <svg width="22" height="22" viewBox="0 0 100 100" fill="none">
+      <ellipse cx="50" cy="62" rx="20" ry="24" fill="#f5c842"/>
+      <rect x="30" y="54" width="40" height="7" rx="2" fill="#0a0a0a"/>
+      <circle cx="50" cy="34" r="14" fill="#f5c842"/>
+    </svg>
+    Admin
+  </div>
+
+  <div class="sb-section">Overview</div>
+  <div class="sbi active" onclick="showPage('dashboard')"><span class="sbi-ic">◈</span>Dashboard</div>
+  <div class="sbi" onclick="showPage('customers')"><span class="sbi-ic">◉</span>Customers<span class="sb-badge" id="badge-customers">0</span></div>
+  <div class="sbi" onclick="showPage('revenue')"><span class="sbi-ic">◈</span>Revenue</div>
+
+  <div class="sb-section">Operations</div>
+  <div class="sbi" onclick="showPage('integrations-view')"><span class="sbi-ic">⊕</span>Integrations</div>
+  <div class="sbi" onclick="showPage('churned')"><span class="sbi-ic">◎</span>Churned</div>
+  <div class="sbi" onclick="showPage('flagged')"><span class="sbi-ic">⚑</span>Flagged<span class="sb-badge" id="badge-flagged" style="display:none">0</span></div>
+
+  <div class="sb-section">Tools</div>
+  <div class="sbi" onclick="openModal('create-customer-modal')"><span class="sbi-ic">+</span>Create account</div>
+  <div class="sbi" onclick="openModal('create-demo-modal')"><span class="sbi-ic">◻</span>Create demo</div>
+  <div class="sbi" onclick="showPage('audit-log')"><span class="sbi-ic">≡</span>Audit log</div>
+
+  <div class="sb-bottom">
+    <div class="sb-user">
+      <div class="sb-avatar">N</div>
+      <div>
+        <div class="sb-uname">Nick Masch</div>
+        <div class="sb-urole">Super Admin</div>
+      </div>
+      <button class="logout-btn" onclick="logout()">out</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div id="main">
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">Dashboard</div>
+    <div class="topbar-right">
+      <input class="tb-search" type="text" placeholder="Search customers..." oninput="searchCustomers(this.value)" id="global-search">
+      <button class="btn btn-gold btn-sm" onclick="refreshData()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ DASHBOARD PAGE ══ -->
+    <div class="page active" id="page-dashboard">
+      <div class="stat-row" id="stats-row">
+        <div class="stat-card gold">
+          <div class="stat-label">Monthly Recurring Revenue</div>
+          <div class="stat-val" id="stat-mrr">—</div>
+          <div class="stat-sub">from active subscriptions</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Active Customers</div>
+          <div class="stat-val" id="stat-active">—</div>
+          <div class="stat-sub">paying accounts</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Locations</div>
+          <div class="stat-val" id="stat-locations">—</div>
+          <div class="stat-sub">across all accounts</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">New This Month</div>
+          <div class="stat-val" id="stat-new">—</div>
+          <div class="stat-sub">signups</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Churned</div>
+          <div class="stat-val" id="stat-churned">—</div>
+          <div class="stat-sub">cancelled accounts</div>
+        </div>
+      </div>
+
+      <!-- Recent signups -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Recent signups</div>
+          <button class="btn btn-sm" onclick="showPage('customers')">View all →</button>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Customer</th><th>Plan</th><th>Locations</th><th>MRR</th><th>Signed up</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody id="recent-customers-tbody">
+            <tr><td colspan="7" style="text-align:center;color:var(--mu);padding:32px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ CUSTOMERS PAGE ══ -->
+    <div class="page" id="page-customers">
+      <div class="card-header" style="background:#fff;border:1px solid var(--bd);border-radius:16px 16px 0 0;margin-bottom:0">
+        <div class="card-title">All customers</div>
+        <div class="filters">
+          <button class="filter-btn active" onclick="filterCustomers('all',this)">All</button>
+          <button class="filter-btn" onclick="filterCustomers('active',this)">Active</button>
+          <button class="filter-btn" onclick="filterCustomers('agency',this)">Agency</button>
+          <button class="filter-btn" onclick="filterCustomers('paused',this)">Paused</button>
+          <button class="filter-btn" onclick="filterCustomers('cancelled',this)">Cancelled</button>
+          <button class="filter-btn" onclick="filterCustomers('demo',this)">Demo</button>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="openModal('create-customer-modal')">+ New customer</button>
+      </div>
+      <div class="card" style="border-radius:0 0 16px 16px;border-top:none">
+        <table>
+          <thead><tr>
+            <th>Customer</th><th>Type</th><th>Plan</th><th>Locations</th>
+            <th>Integrations</th><th>MRR</th><th>Last login</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="customers-tbody">
+            <tr><td colspan="9" style="text-align:center;color:var(--mu);padding:32px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ REVENUE PAGE ══ -->
+    <div class="page" id="page-revenue">
+      <div class="stat-row" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stat-card gold">
+          <div class="stat-label">Total MRR</div>
+          <div class="stat-val" id="rev-mrr">—</div>
+          <div class="stat-sub">monthly recurring</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Annual Run Rate</div>
+          <div class="stat-val" id="rev-arr">—</div>
+          <div class="stat-sub">projected annual</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Revenue / Customer</div>
+          <div class="stat-val" id="rev-arpu">—</div>
+          <div class="stat-sub">per month</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Total Locations</div>
+          <div class="stat-val" id="rev-locs">—</div>
+          <div class="stat-sub">revenue-generating</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Revenue by customer</div></div>
+        <table>
+          <thead><tr>
+            <th>Customer</th><th>Plan</th><th>Locations</th><th>MRR</th><th>Since</th><th>Status</th>
+          </tr></thead>
+          <tbody id="revenue-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--mu);padding:32px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ INTEGRATIONS VIEW ══ -->
+    <div class="page" id="page-integrations-view">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Integration adoption</div></div>
+        <div style="padding:24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px" id="integration-stats">
+          <div style="text-align:center;color:var(--mu);padding:20px;grid-column:1/-1">Loading...</div>
+        </div>
+        <div class="card-header" style="border-top:1px solid var(--bd)"><div class="card-title">Customers by integration</div></div>
+        <table>
+          <thead><tr><th>Customer</th><th>Google</th><th>Square</th><th>HubSpot</th><th>Shopify</th><th>Mindbody</th><th>Calendly</th><th>Acuity</th><th>Stripe</th><th>Zapier</th></tr></thead>
+          <tbody id="integrations-tbody">
+            <tr><td colspan="10" style="text-align:center;color:var(--mu);padding:32px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ CHURNED PAGE ══ -->
+    <div class="page" id="page-churned">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Churned customers</div></div>
+        <table>
+          <thead><tr><th>Customer</th><th>Plan</th><th>MRR Lost</th><th>Cancelled</th><th>Days active</th><th>Actions</th></tr></thead>
+          <tbody id="churned-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--mu);padding:32px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ FLAGGED PAGE ══ -->
+    <div class="page" id="page-flagged">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Flagged for follow-up</div></div>
+        <table>
+          <thead><tr><th>Customer</th><th>Reason</th><th>Flagged</th><th>Note</th><th>Actions</th></tr></thead>
+          <tbody id="flagged-tbody">
+            <tr><td colspan="5" style="text-align:center;color:var(--mu);padding:32px">No flagged accounts</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ AUDIT LOG PAGE ══ -->
+    <div class="page" id="page-audit-log">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Admin audit log</div></div>
+        <table>
+          <thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Customer</th><th>Details</th></tr></thead>
+          <tbody id="audit-tbody">
+            <tr><td colspan="5" style="text-align:center;color:var(--mu);padding:32px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ CUSTOMER DETAIL PAGE ══ -->
+    <div class="page" id="page-customer-detail">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <button class="btn btn-ghost btn-sm" onclick="showPage('customers')">← Back</button>
+        <div id="detail-name" style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:var(--k)"></div>
+        <span id="detail-status-badge" class="badge"></span>
+        <span id="detail-type-badge" class="badge" style="margin-left:4px"></span>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-gold btn-sm" id="impersonate-btn" onclick="impersonateCustomer()">👁 View as customer</button>
+          <button class="btn btn-sm" id="toggle-status-btn" onclick="toggleCustomerStatus()"></button>
+          <button class="btn btn-sm" onclick="openModal('add-location-modal')">+ Add location</button>
+          <button class="btn btn-sm" onclick="openModal('add-user-modal')">+ Add user</button>
+          <button class="btn btn-danger btn-sm" id="flag-btn" onclick="toggleFlag()">⚑ Flag</button>
+        </div>
+      </div>
+
+      <div class="detail-grid">
+        <div>
+          <!-- Account info -->
+          <div class="detail-section">
+            <div class="detail-section-header">
+              <div class="detail-section-title">Account details</div>
+            </div>
+            <div class="detail-rows" id="detail-info-rows"></div>
+          </div>
+
+          <!-- Locations -->
+          <div class="detail-section">
+            <div class="detail-section-header">
+              <div class="detail-section-title">Locations</div>
+              <button class="btn btn-sm" onclick="openModal('add-location-modal')">+ Add</button>
+            </div>
+            <table>
+              <thead><tr><th>Business name</th><th>Platform</th><th>Connected</th><th>Status</th></tr></thead>
+              <tbody id="detail-locations-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Team members -->
+          <div class="detail-section">
+            <div class="detail-section-header">
+              <div class="detail-section-title">Team members</div>
+              <button class="btn btn-sm" onclick="openModal('add-user-modal')">+ Invite</button>
+            </div>
+            <table>
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last login</th></tr></thead>
+              <tbody id="detail-users-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Integrations -->
+          <div class="detail-section">
+            <div class="detail-section-header">
+              <div class="detail-section-title">Integrations</div>
+            </div>
+            <div style="padding:16px 18px;display:flex;flex-wrap:wrap;gap:8px" id="detail-integrations"></div>
+          </div>
+        </div>
+
+        <div>
+          <!-- Stats sidebar -->
+          <div class="detail-section" style="margin-bottom:14px">
+            <div class="detail-section-header"><div class="detail-section-title">This month</div></div>
+            <div class="detail-rows" id="detail-stats-rows"></div>
+          </div>
+
+          <!-- Notes -->
+          <div class="detail-section" style="margin-bottom:14px">
+            <div class="detail-section-header">
+              <div class="detail-section-title">Internal notes</div>
+              <button class="btn btn-sm" onclick="saveNote()">Save</button>
+            </div>
+            <div style="padding:12px 18px">
+              <textarea class="notes-area" id="customer-notes" placeholder="Add internal notes about this customer..."></textarea>
+            </div>
+          </div>
+
+          <!-- Activity -->
+          <div class="detail-section">
+            <div class="detail-section-header"><div class="detail-section-title">Recent activity</div></div>
+            <div class="timeline" id="detail-timeline"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ MODALS ══ -->
+
+<!-- Create customer -->
+<div class="modal-overlay" id="create-customer-modal">
+  <div class="modal">
+    <div class="modal-hed">Create new account</div>
+    <div class="modal-sub">Manually create a customer account. They'll receive a welcome email.</div>
+    <div class="frow"><label class="fl">Full name</label><input class="fi" id="new-name" placeholder="Jane Smith"></div>
+    <div class="frow"><label class="fl">Email</label><input class="fi" type="email" id="new-email" placeholder="jane@business.com"></div>
+    <div class="frow"><label class="fl">Business name</label><input class="fi" id="new-business" placeholder="Bella's Kitchen"></div>
+    <div class="frow"><label class="fl">Plan</label>
+      <select class="fsel" id="new-plan">
+        <option value="starter">Starter — $99/mo</option>
+        <option value="agency">Agency</option>
+      </select>
+    </div>
+    <div class="frow"><label class="fl">Account type</label>
+      <select class="fsel" id="new-type">
+        <option value="direct">Direct customer</option>
+        <option value="agency">Agency</option>
+        <option value="demo">Demo account</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('create-customer-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="createCustomer()">Create account →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create demo -->
+<div class="modal-overlay" id="create-demo-modal">
+  <div class="modal">
+    <div class="modal-hed">Create demo account</div>
+    <div class="modal-sub">Create a dummy account for testing or sales demos. No billing, no emails sent to customers.</div>
+    <div class="frow"><label class="fl">Demo name</label><input class="fi" id="demo-name" placeholder="Demo — Bella's Kitchen"></div>
+    <div class="frow"><label class="fl">Industry</label>
+      <select class="fsel" id="demo-industry">
+        <option>Restaurant</option><option>Dental</option><option>Gym / Fitness</option>
+        <option>Salon / Spa</option><option>Auto Shop</option><option>Medical</option><option>Other</option>
+      </select>
+    </div>
+    <div class="frow"><label class="fl">Number of locations</label><input class="fi" type="number" id="demo-locs" value="1" min="1" max="25"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('create-demo-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="createDemo()">Create demo →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add location -->
+<div class="modal-overlay" id="add-location-modal">
+  <div class="modal">
+    <div class="modal-hed">Add location</div>
+    <div class="modal-sub">Add a new location to this customer account.</div>
+    <div class="frow"><label class="fl">Business name</label><input class="fi" id="loc-name" placeholder="Bella's Kitchen — Downtown"></div>
+    <div class="frow"><label class="fl">Platform</label>
+      <select class="fsel" id="loc-platform"><option value="google">Google Business Profile</option></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('add-location-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="addLocation()">Add location →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add user -->
+<div class="modal-overlay" id="add-user-modal">
+  <div class="modal">
+    <div class="modal-hed">Add team member</div>
+    <div class="modal-sub">Add a user to this customer's account. They'll receive an invite email.</div>
+    <div class="frow"><label class="fl">Name</label><input class="fi" id="user-name" placeholder="John Smith"></div>
+    <div class="frow"><label class="fl">Email</label><input class="fi" type="email" id="user-email" placeholder="john@business.com"></div>
+    <div class="frow"><label class="fl">Role</label>
+      <select class="fsel" id="user-role">
+        <option value="admin">Admin</option>
+        <option value="manager">Manager</option>
+        <option value="staff">Staff</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('add-user-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="addUser()">Send invite →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════
+const API = 'https://swarmreply-backend-production.up.railway.app/api';
+const ADMIN_EMAIL = 'nick@swarmreply.com'; // Update to your actual admin email
+const ADMIN_PASS  = 'SwarmAdmin2026!';     // Update to a secure password
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let state = {
+  token: null,
+  customers: [],
+  filtered: [],
+  currentCustomer: null,
+  filter: 'all',
+  search: '',
+};
+
+// ══════════════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════════════
+function handleLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('admin-email').value.trim();
+  const pass  = document.getElementById('admin-pass').value;
+  const err   = document.getElementById('login-err');
+
+  if (email === ADMIN_EMAIL && pass === ADMIN_PASS) {
+    document.getElementById('login-screen').style.display = 'none';
+    sessionStorage.setItem('admin_auth', '1');
+    loadAllData();
+  } else {
+    err.style.display = 'block';
+    err.textContent = 'Invalid credentials';
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('admin_auth');
+  location.reload();
+}
+
+// Auto-login if session exists
+if (sessionStorage.getItem('admin_auth') === '1') {
+  document.getElementById('login-screen').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════
+// API
+// ══════════════════════════════════════════════
+async function apiFetch(path, opts = {}) {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+    const res = await fetch(API + path, { ...opts, headers: { ...headers, ...opts.headers } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  } catch (err) {
+    console.error('API error:', path, err.message);
+    return null;
+  }
+}
+
+// ══════════════════════════════════════════════
+// LOAD DATA — queries Supabase via backend
+// ══════════════════════════════════════════════
+async function loadAllData() {
+  // Fetch all customers with location counts
+  const data = await apiFetch('/admin/customers');
+  if (data && data.customers) {
+    state.customers = data.customers;
+    state.filtered  = data.customers;
+    renderStats(data);
+    renderCustomersTable(state.filtered);
+    renderRecentCustomers(data.customers.slice(0, 8));
+    renderRevenueTable(data.customers);
+    renderIntegrationsView(data.customers);
+    renderChurnedTable(data.customers.filter(c => c.status === 'cancelled'));
+    renderAuditLog(data.auditLog || []);
+    document.getElementById('badge-customers').textContent = data.customers.filter(c => c.status === 'active').length;
+  } else {
+    // Use mock data if API not ready
+    loadMockData();
+  }
+}
+
+function loadMockData() {
+  const mock = [
+    { id:'1', name:'Bella\'s Kitchen', email:'bella@kitchen.com', plan:'starter', status:'active', type:'direct',
+      location_count:2, mrr:178, last_login:'2026-05-26', created_at:'2026-04-15',
+      integrations:['google','square'], welcome_email_sent:true, flagged:false, notes:'', is_demo:false },
+    { id:'2', name:'Sacramento Dental Group', email:'admin@sacdental.com', plan:'starter', status:'active', type:'direct',
+      location_count:5, mrr:415, last_login:'2026-05-27', created_at:'2026-03-20',
+      integrations:['google','mindbody'], welcome_email_sent:true, flagged:false, notes:'', is_demo:false },
+    { id:'3', name:'Peak Performance Gym', email:'ops@peakgym.com', plan:'starter', status:'active', type:'direct',
+      location_count:1, mrr:99, last_login:'2026-05-25', created_at:'2026-05-01',
+      integrations:['google'], welcome_email_sent:true, flagged:false, notes:'', is_demo:false },
+    { id:'4', name:'Agency Demo Co', email:'demo@agency.com', plan:'agency', status:'active', type:'agency',
+      location_count:12, mrr:895, last_login:'2026-05-27', created_at:'2026-02-10',
+      integrations:['google','hubspot','shopify'], welcome_email_sent:true, flagged:false, notes:'High value account', is_demo:false },
+    { id:'5', name:'Test Account', email:'test@demo.com', plan:'starter', status:'paused', type:'demo',
+      location_count:1, mrr:0, last_login:'2026-05-20', created_at:'2026-05-15',
+      integrations:[], welcome_email_sent:true, flagged:false, notes:'Internal testing only', is_demo:true },
+    { id:'6', name:'Old Customer LLC', email:'info@old.com', plan:'starter', status:'cancelled', type:'direct',
+      location_count:0, mrr:0, last_login:'2026-04-10', created_at:'2026-01-05',
+      integrations:['google'], welcome_email_sent:true, flagged:false, notes:'', is_demo:false },
+  ];
+  state.customers = mock;
+  state.filtered  = mock;
+  const mockStats = {
+    customers: mock,
+    totalMrr: mock.filter(c=>c.status==='active').reduce((s,c)=>s+c.mrr,0),
+    totalLocations: mock.reduce((s,c)=>s+c.location_count,0),
+    newThisMonth: mock.filter(c=>c.created_at>'2026-05-01').length,
+    churnedCount: mock.filter(c=>c.status==='cancelled').length,
+    auditLog: [
+      { time:'2026-05-27 11:41', admin:'Nick', action:'Viewed customer', customer:'Bella\'s Kitchen', detail:'Read-only impersonation' },
+      { time:'2026-05-27 10:15', admin:'Nick', action:'Created account', customer:'Peak Performance Gym', detail:'Manual creation' },
+      { time:'2026-05-26 16:30', admin:'Nick', action:'Toggled status', customer:'Test Account', detail:'paused → active' },
+    ]
+  };
+  renderStats(mockStats);
+  renderCustomersTable(mock);
+  renderRecentCustomers(mock.slice(0,5));
+  renderRevenueTable(mock);
+  renderIntegrationsView(mock);
+  renderChurnedTable(mock.filter(c=>c.status==='cancelled'));
+  renderAuditLog(mockStats.auditLog);
+  document.getElementById('badge-customers').textContent = mock.filter(c=>c.status==='active').length;
+}
+
+// ══════════════════════════════════════════════
+// RENDER FUNCTIONS
+// ══════════════════════════════════════════════
+function fmt$(n){ return '$' + (n||0).toLocaleString(); }
+function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function daysSince(d){ return Math.floor((Date.now()-new Date(d))/(1000*60*60*24)); }
+
+function statusBadge(s) {
+  const map = { active:'badge-green', cancelled:'badge-red', paused:'badge-gold', trial:'badge-blue', demo:'badge-gray' };
+  return `<span class="badge ${map[s]||'badge-gray'}">${s}</span>`;
+}
+
+function typeBadge(t) {
+  const map = { agency:'badge-blue', demo:'badge-gray', direct:'' };
+  if (!t || t === 'direct') return '';
+  return `<span class="badge ${map[t]||'badge-gray'}">${t}</span>`;
+}
+
+function calcMrr(c) {
+  if (c.mrr !== undefined) return c.mrr;
+  const locs = c.location_count || 0;
+  if (locs === 0) return 0;
+  let total = 99;
+  if (locs > 1) total += Math.min(locs-1,4)*79;
+  if (locs > 5) total += Math.min(locs-5,20)*69;
+  return total;
+}
+
+function renderStats(data) {
+  const active = (data.customers||[]).filter(c=>c.status==='active');
+  const mrr = data.totalMrr || active.reduce((s,c)=>s+calcMrr(c),0);
+  const locs = data.totalLocations || active.reduce((s,c)=>s+(c.location_count||0),0);
+  document.getElementById('stat-mrr').textContent = fmt$(mrr) + '/mo';
+  document.getElementById('stat-active').textContent = active.length;
+  document.getElementById('stat-locations').textContent = locs;
+  document.getElementById('stat-new').textContent = data.newThisMonth || 0;
+  document.getElementById('stat-churned').textContent = data.churnedCount || 0;
+  document.getElementById('rev-mrr').textContent = fmt$(mrr) + '/mo';
+  document.getElementById('rev-arr').textContent = fmt$(mrr*12) + '/yr';
+  document.getElementById('rev-arpu').textContent = active.length ? fmt$(Math.round(mrr/active.length)) : '—';
+  document.getElementById('rev-locs').textContent = locs;
+}
+
+function renderCustomersTable(customers) {
+  const tb = document.getElementById('customers-tbody');
+  if (!customers.length) {
+    tb.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:32px">No customers found</td></tr>';
+    return;
+  }
+  tb.innerHTML = customers.map(c => {
+    const mrr = calcMrr(c);
+    const ints = (c.integrations||[]);
+    const intBadges = ints.length
+      ? ints.map(i=>`<span class="badge badge-blue" style="margin:1px">${i}</span>`).join('')
+      : '<span class="badge badge-gray">Web only</span>';
+    const lastLogin = c.last_login ? daysSince(c.last_login) + 'd ago' : '—';
+    return `<tr>
+      <td>
+        <div style="font-weight:600">${c.name||'—'}</div>
+        <div style="font-size:.72rem;color:var(--mu)">${c.email||''}</div>
+      </td>
+      <td>${typeBadge(c.type) || '<span style="color:var(--mu);font-size:.72rem">Direct</span>'}</td>
+      <td>${statusBadge(c.plan||'starter')}</td>
+      <td style="font-weight:700;font-family:'DM Mono',monospace">${c.location_count||0}</td>
+      <td>${intBadges}</td>
+      <td style="font-weight:700;font-family:'DM Mono',monospace">${mrr ? fmt$(mrr) : '—'}</td>
+      <td style="color:var(--mu);font-size:.75rem">${lastLogin}</td>
+      <td>${statusBadge(c.status||'active')}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-sm btn-ghost" onclick="openCustomerDetail('${c.id}')">View</button>
+          <button class="btn btn-sm btn-ghost" onclick="impersonate('${c.id}')" title="View as customer">👁</button>
+          ${c.status==='active'
+            ? `<button class="btn btn-sm btn-danger" onclick="toggleStatus('${c.id}','paused')">Pause</button>`
+            : `<button class="btn btn-sm" onclick="toggleStatus('${c.id}','active')">Activate</button>`}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRecentCustomers(customers) {
+  const tb = document.getElementById('recent-customers-tbody');
+  tb.innerHTML = customers.map(c => {
+    const mrr = calcMrr(c);
+    return `<tr>
+      <td><div style="font-weight:600">${c.name}</div><div style="font-size:.72rem;color:var(--mu)">${c.email}</div></td>
+      <td>${statusBadge(c.plan||'starter')}</td>
+      <td style="font-weight:700">${c.location_count||0}</td>
+      <td style="font-weight:700;font-family:'DM Mono',monospace">${mrr ? fmt$(mrr) : '—'}</td>
+      <td style="color:var(--mu);font-size:.75rem">${fmtDate(c.created_at)}</td>
+      <td>${statusBadge(c.status)}</td>
+      <td><button class="btn btn-sm btn-ghost" onclick="openCustomerDetail('${c.id}')">View →</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRevenueTable(customers) {
+  const active = customers.filter(c=>c.status==='active').sort((a,b)=>calcMrr(b)-calcMrr(a));
+  document.getElementById('revenue-tbody').innerHTML = active.map(c=>{
+    return `<tr>
+      <td><div style="font-weight:600">${c.name}</div><div style="font-size:.72rem;color:var(--mu)">${c.email}</div></td>
+      <td>${statusBadge(c.plan||'starter')}</td>
+      <td style="font-weight:700">${c.location_count||0}</td>
+      <td style="font-weight:700;font-family:'DM Mono',monospace;color:var(--gr)">${fmt$(calcMrr(c))}/mo</td>
+      <td style="color:var(--mu);font-size:.75rem">${fmtDate(c.created_at)}</td>
+      <td>${statusBadge(c.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderIntegrationsView(customers) {
+  const ints = ['google','square','hubspot','shopify','mindbody','calendly','acuity','stripe','zapier'];
+  const counts = {};
+  ints.forEach(i => counts[i] = customers.filter(c=>(c.integrations||[]).includes(i)).length);
+
+  document.getElementById('integration-stats').innerHTML = ints.map(i=>`
+    <div style="background:#fff;border:1px solid var(--bd);border-radius:12px;padding:16px;text-align:center">
+      <div style="font-size:1.4rem;font-weight:900;font-family:'Playfair Display',serif;color:var(--k);margin-bottom:4px">${counts[i]}</div>
+      <div style="font-size:.72rem;font-weight:700;text-transform:capitalize;color:var(--mu)">${i}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('integrations-tbody').innerHTML = customers.filter(c=>c.status==='active').map(c=>{
+    const has = i => (c.integrations||[]).includes(i);
+    return `<tr>
+      <td><div style="font-weight:600">${c.name}</div></td>
+      ${ints.map(i=>`<td>${has(i)?'<span style="color:var(--gr);font-weight:700">✓</span>':'<span style="color:var(--bd)">—</span>'}</td>`).join('')}
+    </tr>`;
+  }).join('');
+}
+
+function renderChurnedTable(customers) {
+  if (!customers.length) {
+    document.getElementById('churned-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:32px">No churned accounts</td></tr>';
+    return;
+  }
+  document.getElementById('churned-tbody').innerHTML = customers.map(c=>`
+    <tr>
+      <td><div style="font-weight:600">${c.name}</div><div style="font-size:.72rem;color:var(--mu)">${c.email}</div></td>
+      <td>${statusBadge(c.plan||'starter')}</td>
+      <td style="font-weight:700;font-family:'DM Mono',monospace;color:var(--re)">${fmt$(calcMrr(c))}</td>
+      <td style="color:var(--mu);font-size:.75rem">${fmtDate(c.updated_at||c.created_at)}</td>
+      <td style="font-weight:700">${c.created_at ? daysSince(c.created_at) : '—'}</td>
+      <td><button class="btn btn-sm" onclick="toggleStatus('${c.id}','active')">Reactivate</button></td>
+    </tr>
+  `).join('');
+}
+
+function renderAuditLog(log) {
+  if (!log.length) {
+    document.getElementById('audit-tbody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--mu);padding:32px">No admin actions recorded yet</td></tr>';
+    return;
+  }
+  document.getElementById('audit-tbody').innerHTML = log.map(e=>`
+    <tr>
+      <td style="font-size:.72rem;color:var(--mu);font-family:'DM Mono',monospace">${e.time||e.created_at||''}</td>
+      <td style="font-weight:600">${e.admin||'Admin'}</td>
+      <td>${e.action||e.event_type||''}</td>
+      <td style="color:var(--mu)">${e.customer||e.customer_id||''}</td>
+      <td style="font-size:.75rem;color:var(--mu)">${e.detail||e.metadata||''}</td>
+    </tr>
+  `).join('');
+}
+
+// ══════════════════════════════════════════════
+// CUSTOMER DETAIL
+// ══════════════════════════════════════════════
+function openCustomerDetail(id) {
+  const c = state.customers.find(x=>x.id===id);
+  if (!c) return;
+  state.currentCustomer = c;
+
+  document.getElementById('detail-name').textContent = c.name;
+  document.getElementById('detail-status-badge').className = 'badge ' + (c.status==='active'?'badge-green':c.status==='paused'?'badge-gold':'badge-red');
+  document.getElementById('detail-status-badge').textContent = c.status;
+  document.getElementById('detail-type-badge').textContent = c.type && c.type!=='direct' ? c.type : '';
+  document.getElementById('detail-type-badge').className = 'badge ' + (c.type==='agency'?'badge-blue':c.type==='demo'?'badge-gray':'');
+
+  const toggleBtn = document.getElementById('toggle-status-btn');
+  toggleBtn.textContent = c.status === 'active' ? 'Pause account' : 'Activate account';
+  toggleBtn.className = c.status === 'active' ? 'btn btn-danger btn-sm' : 'btn btn-sm';
+
+  // Info rows
+  const mrr = calcMrr(c);
+  document.getElementById('detail-info-rows').innerHTML = `
+    <div class="detail-row"><span class="detail-row-label">Email</span><span class="detail-row-val">${c.email||'—'}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Plan</span><span class="detail-row-val">${c.plan||'starter'}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Type</span><span class="detail-row-val">${c.type||'Direct'}</span></div>
+    <div class="detail-row"><span class="detail-row-label">MRR</span><span class="detail-row-val" style="color:var(--gr)">${fmt$(mrr)}/mo</span></div>
+    <div class="detail-row"><span class="detail-row-label">Locations</span><span class="detail-row-val">${c.location_count||0}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Stripe ID</span><span class="detail-row-val" style="font-family:'DM Mono',monospace;font-size:.72rem">${c.stripe_customer_id||'—'}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Signed up</span><span class="detail-row-val">${fmtDate(c.created_at)}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Last login</span><span class="detail-row-val">${c.last_login ? daysSince(c.last_login) + ' days ago' : '—'}</span></div>
+  `;
+
+  // Stats
+  document.getElementById('detail-stats-rows').innerHTML = `
+    <div class="detail-row"><span class="detail-row-label">Reviews replied</span><span class="detail-row-val">${c.replies_this_month||0}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Requests sent</span><span class="detail-row-val">${c.requests_this_month||0}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Avg rating</span><span class="detail-row-val">${c.avg_rating ? '★ ' + c.avg_rating : '—'}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Google connected</span><span class="detail-row-val">${c.google_connected ? '✓ Yes' : '✗ No'}</span></div>
+  `;
+
+  // Locations
+  const locs = c.locations || [];
+  document.getElementById('detail-locations-tbody').innerHTML = locs.length
+    ? locs.map(l=>`<tr>
+        <td style="font-weight:600">${l.business_name||l.name||'—'}</td>
+        <td>${l.platform||'google'}</td>
+        <td>${l.refresh_token ? '<span style="color:var(--gr)">✓ Connected</span>' : '<span style="color:var(--mu)">Not connected</span>'}</td>
+        <td>${l.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Inactive</span>'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="color:var(--mu);padding:16px">No locations</td></tr>';
+
+  // Team
+  const users = c.team_members || [];
+  document.getElementById('detail-users-tbody').innerHTML = users.length
+    ? users.map(u=>`<tr>
+        <td style="font-weight:600">${u.name||'—'}</td>
+        <td style="color:var(--mu)">${u.email||''}</td>
+        <td>${u.role||'staff'}</td>
+        <td style="color:var(--mu);font-size:.75rem">${u.last_login ? daysSince(u.last_login) + 'd ago' : '—'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="color:var(--mu);padding:16px">No team members</td></tr>';
+
+  // Integrations
+  const ints = c.integrations || [];
+  document.getElementById('detail-integrations').innerHTML = ints.length
+    ? ints.map(i=>`<span class="badge badge-blue" style="padding:5px 12px">${i}</span>`).join('')
+    : '<span style="color:var(--mu);font-size:.82rem">Web only — no integrations connected</span>';
+
+  // Notes
+  document.getElementById('customer-notes').value = c.notes || '';
+
+  // Timeline
+  const events = c.recent_events || [
+    { type:'green', text:'Account created', time: fmtDate(c.created_at) },
+    { type:'gold',  text:'Welcome email sent', time: fmtDate(c.created_at) },
+  ];
+  document.getElementById('detail-timeline').innerHTML = events.map(e=>`
+    <div class="tl-item">
+      <div class="tl-dot ${e.type}"></div>
+      <div><div class="tl-text">${e.text}</div><div class="tl-time">${e.time}</div></div>
+    </div>
+  `).join('');
+
+  addAuditEntry('Viewed customer', c.name);
+  showPage('customer-detail');
+}
+
+// ══════════════════════════════════════════════
+// ACTIONS
+// ══════════════════════════════════════════════
+function impersonate(id) {
+  const c = state.customers.find(x=>x.id===id) || state.currentCustomer;
+  if (!c) return;
+  addAuditEntry('Impersonated customer', c.name, 'Read-only view opened');
+  // Open customer dashboard in new tab with admin impersonation token
+  const url = `https://app.swarmreply.com/dashboard?impersonate=${id}&admin_token=${btoa('admin_' + Date.now())}`;
+  window.open(url, '_blank');
+}
+
+function impersonateCustomer() {
+  if (state.currentCustomer) impersonate(state.currentCustomer.id);
+}
+
+function toggleCustomerStatus() {
+  const c = state.currentCustomer;
+  if (!c) return;
+  const newStatus = c.status === 'active' ? 'paused' : 'active';
+  toggleStatus(c.id, newStatus);
+}
+
+async function toggleStatus(id, newStatus) {
+  const c = state.customers.find(x=>x.id===id);
+  if (!c) return;
+  if (!confirm(`${newStatus === 'active' ? 'Activate' : 'Pause'} account for ${c.name}?`)) return;
+
+  c.status = newStatus;
+  addAuditEntry('Changed status', c.name, `→ ${newStatus}`);
+
+  // API call
+  await apiFetch(`/admin/customers/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: newStatus })
+  });
+
+  renderCustomersTable(state.filtered);
+  if (state.currentCustomer?.id === id) openCustomerDetail(id);
+  alert(`Account ${newStatus === 'active' ? 'activated' : 'paused'} ✓`);
+}
+
+function toggleFlag() {
+  const c = state.currentCustomer;
+  if (!c) return;
+  c.flagged = !c.flagged;
+  addAuditEntry(c.flagged ? 'Flagged customer' : 'Unflagged customer', c.name);
+
+  const flagged = state.customers.filter(x=>x.flagged);
+  const badge = document.getElementById('badge-flagged');
+  badge.style.display = flagged.length ? 'inline-block' : 'none';
+  badge.textContent = flagged.length;
+  renderFlaggedTable();
+  alert(c.flagged ? 'Customer flagged for follow-up ✓' : 'Flag removed ✓');
+}
+
+function renderFlaggedTable() {
+  const flagged = state.customers.filter(c=>c.flagged);
+  document.getElementById('flagged-tbody').innerHTML = flagged.length
+    ? flagged.map(c=>`<tr>
+        <td><div style="font-weight:600">${c.name}</div><div style="font-size:.72rem;color:var(--mu)">${c.email}</div></td>
+        <td><span class="badge badge-gold">Follow-up needed</span></td>
+        <td style="color:var(--mu);font-size:.75rem">Today</td>
+        <td style="color:var(--mu);font-size:.75rem">${c.notes||'—'}</td>
+        <td><button class="btn btn-sm" onclick="openCustomerDetail('${c.id}')">View →</button></td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--mu);padding:32px">No flagged accounts</td></tr>';
+}
+
+function saveNote() {
+  const c = state.currentCustomer;
+  if (!c) return;
+  c.notes = document.getElementById('customer-notes').value;
+  addAuditEntry('Updated notes', c.name);
+  // Save to API
+  apiFetch(`/admin/customers/${c.id}/notes`, {
+    method: 'PATCH',
+    body: JSON.stringify({ notes: c.notes })
+  });
+  alert('Notes saved ✓');
+}
+
+function createCustomer() {
+  const name  = document.getElementById('new-name').value.trim();
+  const email = document.getElementById('new-email').value.trim();
+  const biz   = document.getElementById('new-business').value.trim();
+  const plan  = document.getElementById('new-plan').value;
+  const type  = document.getElementById('new-type').value;
+  if (!name || !email) return alert('Name and email are required');
+
+  const newC = {
+    id: 'new_' + Date.now(),
+    name, email, plan, type, status: 'active',
+    location_count: 0, mrr: plan==='agency' ? 0 : 99,
+    integrations: [], created_at: new Date().toISOString(),
+    notes: '', flagged: false, is_demo: type === 'demo',
+  };
+  state.customers.unshift(newC);
+  state.filtered = state.customers;
+  renderCustomersTable(state.filtered);
+  addAuditEntry('Created account', name, `${type} · ${plan}`);
+  closeModal('create-customer-modal');
+  alert(`Account created for ${name} ✓`);
+}
+
+function createDemo() {
+  const name = document.getElementById('demo-name').value.trim() || 'Demo Account';
+  const industry = document.getElementById('demo-industry').value;
+  const locs = parseInt(document.getElementById('demo-locs').value) || 1;
+
+  const demo = {
+    id: 'demo_' + Date.now(),
+    name, email: 'demo_' + Date.now() + '@demo.internal',
+    plan: 'starter', type: 'demo', status: 'paused',
+    location_count: locs, mrr: 0,
+    integrations: [], created_at: new Date().toISOString(),
+    notes: `Demo account — ${industry}`, flagged: false, is_demo: true,
+  };
+  state.customers.unshift(demo);
+  state.filtered = state.customers;
+  renderCustomersTable(state.filtered);
+  addAuditEntry('Created demo', name, `${locs} location(s) · ${industry}`);
+  closeModal('create-demo-modal');
+  alert(`Demo account created: ${name} ✓`);
+}
+
+function addLocation() {
+  const name = document.getElementById('loc-name').value.trim();
+  if (!name) return alert('Business name required');
+  const c = state.currentCustomer;
+  if (!c) return;
+  if (!c.locations) c.locations = [];
+  c.locations.push({ business_name: name, platform: 'google', is_active: true });
+  c.location_count = (c.location_count||0) + 1;
+  c.mrr = calcMrr(c);
+  addAuditEntry('Added location', c.name, name);
+  closeModal('add-location-modal');
+  openCustomerDetail(c.id);
+  alert(`Location added ✓`);
+}
+
+function addUser() {
+  const name  = document.getElementById('user-name').value.trim();
+  const email = document.getElementById('user-email').value.trim();
+  const role  = document.getElementById('user-role').value;
+  if (!name || !email) return alert('Name and email required');
+  const c = state.currentCustomer;
+  if (!c) return;
+  if (!c.team_members) c.team_members = [];
+  c.team_members.push({ name, email, role, last_login: null });
+  addAuditEntry('Added user', c.name, `${name} (${role})`);
+  closeModal('add-user-modal');
+  openCustomerDetail(c.id);
+  alert(`User invited ✓`);
+}
+
+// ══════════════════════════════════════════════
+// FILTER & SEARCH
+// ══════════════════════════════════════════════
+function filterCustomers(filter, btn) {
+  state.filter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function searchCustomers(q) {
+  state.search = q.toLowerCase();
+  applyFilters();
+}
+
+function applyFilters() {
+  let result = state.customers;
+  if (state.filter !== 'all') result = result.filter(c => c.status === state.filter || c.type === state.filter || (state.filter === 'demo' && c.is_demo));
+  if (state.search) result = result.filter(c =>
+    (c.name||'').toLowerCase().includes(state.search) ||
+    (c.email||'').toLowerCase().includes(state.search)
+  );
+  state.filtered = result;
+  renderCustomersTable(result);
+}
+
+// ══════════════════════════════════════════════
+// NAVIGATION & UTILS
+// ══════════════════════════════════════════════
+const pageTitles = {
+  dashboard:'Dashboard', customers:'Customers', revenue:'Revenue',
+  'integrations-view':'Integrations', churned:'Churned', flagged:'Flagged for follow-up',
+  'audit-log':'Audit log', 'customer-detail':'Customer detail',
+};
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.sbi').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-title').textContent = pageTitles[id] || id;
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); });
+});
+
+function refreshData() {
+  loadAllData();
+}
+
+const auditLog = [];
+function addAuditEntry(action, customer, detail='') {
+  auditLog.unshift({
+    time: new Date().toLocaleString('en-US',{hour:'2-digit',minute:'2-digit',month:'short',day:'numeric'}),
+    admin: 'Nick', action, customer, detail
+  });
+  renderAuditLog(auditLog);
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+if (sessionStorage.getItem('admin_auth') === '1') {
+  loadMockData();
+}
+</script>
+</body>
+</html>
