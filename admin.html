@@ -658,19 +658,43 @@ let state = {
 // ══════════════════════════════════════════════
 // LOGIN
 // ══════════════════════════════════════════════
-function handleLogin(e) {
+async function handleLogin(e) {
   e.preventDefault();
   const email = document.getElementById('admin-email').value.trim();
   const pass  = document.getElementById('admin-pass').value;
   const err   = document.getElementById('login-err');
+  const btn   = e.target.querySelector('button');
+  btn.disabled = true; btn.textContent = 'Signing in...';
 
-  if (email === ADMIN_EMAIL && pass === ADMIN_PASS) {
-    document.getElementById('login-screen').style.display = 'none';
-    sessionStorage.setItem('admin_auth', '1');
-    loadAllData();
-  } else {
-    err.style.display = 'block';
-    err.textContent = 'Invalid credentials';
+  try {
+    const res = await fetch(API + '/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json();
+    if (res.ok && data.token) {
+      state.token = data.token;
+      sessionStorage.setItem('admin_auth', '1');
+      sessionStorage.setItem('admin_token', data.token);
+      document.getElementById('login-screen').style.display = 'none';
+      loadAllData();
+    } else {
+      err.style.display = 'block';
+      err.textContent = data.error || 'Invalid credentials';
+      btn.disabled = false; btn.textContent = 'Sign in →';
+    }
+  } catch(ex) {
+    // Fallback to local auth if API unavailable
+    if (email === ADMIN_EMAIL && pass === ADMIN_PASS) {
+      document.getElementById('login-screen').style.display = 'none';
+      sessionStorage.setItem('admin_auth', '1');
+      loadAllData();
+    } else {
+      err.style.display = 'block';
+      err.textContent = 'Invalid credentials';
+      btn.disabled = false; btn.textContent = 'Sign in →';
+    }
   }
 }
 
@@ -682,6 +706,7 @@ function logout() {
 // Auto-login if session exists
 if (sessionStorage.getItem('admin_auth') === '1') {
   document.getElementById('login-screen').style.display = 'none';
+  state.token = sessionStorage.getItem('admin_token') || null;
 }
 
 // ══════════════════════════════════════════════
@@ -704,7 +729,6 @@ async function apiFetch(path, opts = {}) {
 // LOAD DATA — queries Supabase via backend
 // ══════════════════════════════════════════════
 async function loadAllData() {
-  // Fetch all customers with location counts
   const data = await apiFetch('/admin/customers');
   if (data && data.customers) {
     state.customers = data.customers;
