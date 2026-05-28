@@ -722,55 +722,13 @@ async function loadAllData() {
     renderAuditLog(data.auditLog || []);
     document.getElementById('badge-customers').textContent = data.customers.filter(c => c.status === 'active').length;
   } else {
-    // Use mock data if API not ready
-    loadMockData();
+    const tbody = document.getElementById('customers-tbody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#c0392b;padding:32px">⚠ Could not load customers — check API connection</td></tr>';
+    const recent = document.getElementById('recent-customers-tbody');
+    if (recent) recent.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#c0392b;padding:32px">⚠ API error</td></tr>';
   }
 }
 
-function loadMockData() {
-  const mock = [
-    { id:'1', name:'Bella\'s Kitchen', email:'bella@kitchen.com', plan:'starter', status:'active', type:'direct',
-      location_count:2, mrr:178, last_login:'2026-05-26', created_at:'2026-04-15',
-      integrations:['google','square'], welcome_email_sent:true, flagged:false, notes:'', is_demo:false },
-    { id:'2', name:'Sacramento Dental Group', email:'admin@sacdental.com', plan:'starter', status:'active', type:'direct',
-      location_count:5, mrr:415, last_login:'2026-05-27', created_at:'2026-03-20',
-      integrations:['google','mindbody'], welcome_email_sent:true, flagged:false, notes:'', is_demo:false },
-    { id:'3', name:'Peak Performance Gym', email:'ops@peakgym.com', plan:'starter', status:'active', type:'direct',
-      location_count:1, mrr:99, last_login:'2026-05-25', created_at:'2026-05-01',
-      integrations:['google'], welcome_email_sent:true, flagged:false, notes:'', is_demo:false },
-    { id:'4', name:'Agency Demo Co', email:'demo@agency.com', plan:'agency', status:'active', type:'agency',
-      location_count:12, mrr:895, last_login:'2026-05-27', created_at:'2026-02-10',
-      integrations:['google','hubspot','shopify'], welcome_email_sent:true, flagged:false, notes:'High value account', is_demo:false },
-    { id:'5', name:'Test Account', email:'test@demo.com', plan:'starter', status:'paused', type:'demo',
-      location_count:1, mrr:0, last_login:'2026-05-20', created_at:'2026-05-15',
-      integrations:[], welcome_email_sent:true, flagged:false, notes:'Internal testing only', is_demo:true },
-    { id:'6', name:'Old Customer LLC', email:'info@old.com', plan:'starter', status:'cancelled', type:'direct',
-      location_count:0, mrr:0, last_login:'2026-04-10', created_at:'2026-01-05',
-      integrations:['google'], welcome_email_sent:true, flagged:false, notes:'', is_demo:false },
-  ];
-  state.customers = mock;
-  state.filtered  = mock;
-  const mockStats = {
-    customers: mock,
-    totalMrr: mock.filter(c=>c.status==='active').reduce((s,c)=>s+c.mrr,0),
-    totalLocations: mock.reduce((s,c)=>s+c.location_count,0),
-    newThisMonth: mock.filter(c=>c.created_at>'2026-05-01').length,
-    churnedCount: mock.filter(c=>c.status==='cancelled').length,
-    auditLog: [
-      { time:'2026-05-27 11:41', admin:'Nick', action:'Viewed customer', customer:'Bella\'s Kitchen', detail:'Read-only impersonation' },
-      { time:'2026-05-27 10:15', admin:'Nick', action:'Created account', customer:'Peak Performance Gym', detail:'Manual creation' },
-      { time:'2026-05-26 16:30', admin:'Nick', action:'Toggled status', customer:'Test Account', detail:'paused → active' },
-    ]
-  };
-  renderStats(mockStats);
-  renderCustomersTable(mock);
-  renderRecentCustomers(mock.slice(0,5));
-  renderRevenueTable(mock);
-  renderIntegrationsView(mock);
-  renderChurnedTable(mock.filter(c=>c.status==='cancelled'));
-  renderAuditLog(mockStats.auditLog);
-  document.getElementById('badge-customers').textContent = mock.filter(c=>c.status==='active').length;
-}
 
 // ══════════════════════════════════════════════
 // RENDER FUNCTIONS
@@ -1263,7 +1221,6 @@ function addAuditEntry(action, customer, detail='') {
 // INIT
 // ══════════════════════════════════════════════
 if (sessionStorage.getItem('admin_auth') === '1') {
-  loadMockData();
 }
 // ── DELETE CUSTOMER ────────────────────────────────────
 function deleteCustomer(id) {
