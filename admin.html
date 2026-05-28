@@ -802,10 +802,8 @@ function renderCustomersTable(customers) {
       <td>
         <div style="display:flex;gap:4px">
           <button class="btn btn-sm btn-ghost" onclick="openCustomerDetail('${c.id}')">View</button>
-          <button class="btn btn-sm btn-ghost" onclick="impersonate('${c.id}')" title="Login as this customer">Login as</button>
+          <button class="btn btn-sm btn-gold" onclick="impersonate('${c.id}')" title="Login as this customer">Login as</button>
           <button class="btn btn-sm btn-danger" onclick="deleteCustomer('${c.id}')" title="Delete">🗑</button>
-          <button class="btn btn-sm btn-gold" onclick="impersonate(\'${c.id}\')" title="Login as this customer" style="font-size:.7rem;padding:3px 8px">Login as</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteCustomer(\'${c.id}\')" title="Delete account" style="font-size:.7rem;padding:3px 8px">🗑</button>
           ${c.status==='active'
             ? `<button class="btn btn-sm btn-danger" onclick="toggleStatus('${c.id}','paused')">Pause</button>`
             : `<button class="btn btn-sm" onclick="toggleStatus('${c.id}','active')">Activate</button>`}
