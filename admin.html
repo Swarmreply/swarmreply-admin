@@ -750,6 +750,7 @@ function typeBadge(t) {
 }
 
 function calcMrr(c) {
+  if (c.is_demo) return 0;
   if (c.mrr !== undefined) return c.mrr;
   const locs = c.location_count || 0;
   if (locs === 0) return 0;
