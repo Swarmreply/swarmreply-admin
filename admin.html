@@ -906,9 +906,15 @@ function renderAuditLog(log) {
 // ══════════════════════════════════════════════
 // CUSTOMER DETAIL
 // ══════════════════════════════════════════════
-function openCustomerDetail(id) {
-  const c = state.customers.find(x=>x.id===id);
+async function openCustomerDetail(id) {
+  let c = state.customers.find(x=>x.id===id);
   if (!c) return;
+  // Pull full detail (real locations + team members) from the backend rather
+  // than the summary list, which doesn't include them.
+  try {
+    const detail = await apiFetch(`/admin/customers/${id}`);
+    if (detail && detail.id) c = { ...c, ...detail };
+  } catch (e) { /* fall back to cached list row */ }
   state.currentCustomer = c;
 
   document.getElementById('detail-name').textContent = c.name;
@@ -1127,34 +1133,42 @@ Use "Login as" to enter the account.`);
   });
 }
 
-function addLocation() {
+async function addLocation() {
   const name = document.getElementById('loc-name').value.trim();
   if (!name) return alert('Business name required');
   const c = state.currentCustomer;
   if (!c) return;
-  if (!c.locations) c.locations = [];
-  c.locations.push({ business_name: name, platform: 'google', is_active: true });
-  c.location_count = (c.location_count||0) + 1;
-  c.mrr = calcMrr(c);
-  addAuditEntry('Added location', c.name, name);
-  closeModal('add-location-modal');
-  openCustomerDetail(c.id);
-  alert(`Location added ✓`);
+  try {
+    await apiFetch(`/admin/customers/${c.id}/locations`, {
+      method: 'POST',
+      body: JSON.stringify({ business_name: name, platform: 'google' })
+    });
+    closeModal('add-location-modal');
+    await openCustomerDetail(c.id);
+    alert(`Location added ✓`);
+  } catch (err) {
+    alert('Could not add location: ' + (err.message || 'please try again'));
+  }
 }
 
-function addUser() {
+async function addUser() {
   const name  = document.getElementById('user-name').value.trim();
   const email = document.getElementById('user-email').value.trim();
   const role  = document.getElementById('user-role').value;
   if (!name || !email) return alert('Name and email required');
   const c = state.currentCustomer;
   if (!c) return;
-  if (!c.team_members) c.team_members = [];
-  c.team_members.push({ name, email, role, last_login: null });
-  addAuditEntry('Added user', c.name, `${name} (${role})`);
-  closeModal('add-user-modal');
-  openCustomerDetail(c.id);
-  alert(`User invited ✓`);
+  try {
+    const res = await apiFetch(`/admin/customers/${c.id}/users`, {
+      method: 'POST',
+      body: JSON.stringify({ name, email, role })
+    });
+    closeModal('add-user-modal');
+    await openCustomerDetail(c.id);
+    alert(`User added ✓` + (res && res.tempPassword ? `\n\nTemporary password: ${res.tempPassword}\n(Share securely — they can change it via "Forgot password".)` : ''));
+  } catch (err) {
+    alert('Could not add user: ' + (err.message || 'please try again'));
+  }
 }
 
 // ══════════════════════════════════════════════
