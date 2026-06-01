@@ -1139,15 +1139,21 @@ async function addLocation() {
   const c = state.currentCustomer;
   if (!c) return;
   try {
-    await apiFetch(`/admin/customers/${c.id}/locations`, {
+    const res = await fetch(`${API}/admin/customers/${c.id}/locations`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
       body: JSON.stringify({ business_name: name, platform: 'google' })
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert('Could not add location: ' + (data.error || ('HTTP ' + res.status)));
+      return;
+    }
     closeModal('add-location-modal');
     await openCustomerDetail(c.id);
-    alert(`Location added ✓`);
+    alert('Location added ✓');
   } catch (err) {
-    alert('Could not add location: ' + (err.message || 'please try again'));
+    alert('Could not add location: ' + (err.message || 'network error'));
   }
 }
 
@@ -1158,16 +1164,25 @@ async function addUser() {
   if (!name || !email) return alert('Name and email required');
   const c = state.currentCustomer;
   if (!c) return;
+  // Own fetch (not apiFetch, which swallows errors and returns null → fake success).
   try {
-    const res = await apiFetch(`/admin/customers/${c.id}/users`, {
+    const res = await fetch(`${API}/admin/customers/${c.id}/users`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
       body: JSON.stringify({ name, email, role })
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert('Could not add user: ' + (data.error || ('HTTP ' + res.status)));
+      return;
+    }
     closeModal('add-user-modal');
     await openCustomerDetail(c.id);
-    alert(`User added ✓` + (res && res.tempPassword ? `\n\nTemporary password: ${res.tempPassword}\n(Share securely — they can change it via "Forgot password".)` : ''));
+    alert('User added ✓' + (data.tempPassword
+      ? `\n\nTemporary password: ${data.tempPassword}\nShare it securely — they can change it via "Forgot password".`
+      : ''));
   } catch (err) {
-    alert('Could not add user: ' + (err.message || 'please try again'));
+    alert('Could not add user: ' + (err.message || 'network error'));
   }
 }
 
