@@ -206,9 +206,15 @@ tr:hover td{background:#fafaf8}
 @media(max-width:900px){
   #sidebar{transform:translateX(-100%);transition:transform .2s;z-index:150}
   #sidebar.open{transform:translateX(0);box-shadow:0 0 50px rgba(0,0,0,.35)}
-  #main{margin-left:0}
+  #main{margin-left:0;padding:16px}
   .detail-grid{grid-template-columns:1fr}
   .adm-burger{display:inline-flex;align-items:center}
+  /* Stat tiles: 2-up on phones (beats !important on the inline 4-col override) */
+  .stat-row{grid-template-columns:repeat(2,1fr)!important}
+  #integration-stats{grid-template-columns:repeat(2,1fr)!important}
+  /* Tables scroll sideways inside their card instead of being clipped */
+  .card{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .card table{min-width:640px}
 }
 </style>
 </head>
