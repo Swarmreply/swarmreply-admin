@@ -215,6 +215,10 @@ tr:hover td{background:#fafaf8}
   /* Tables scroll sideways inside their card instead of being clipped */
   .card{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .card table{min-width:640px}
+  /* Topbar: tighter, title truncates instead of pushing actions off-screen */
+  .topbar{padding:0 14px}
+  .topbar-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+  .topbar-right{flex-shrink:0}
 }
 </style>
 </head>
