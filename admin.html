@@ -200,10 +200,15 @@ tr:hover td{background:#fafaf8}
 
 /* ── RESPONSIVE ── */
 @media(max-width:1200px){.stat-row{grid-template-columns:repeat(3,1fr)}}
+.adm-burger{display:none;background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.14);border-radius:9px;padding:7px 11px;cursor:pointer;font-size:1.05rem;line-height:1;margin-right:12px;flex-shrink:0}
+#sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:140}
+#sb-overlay.show{display:block}
 @media(max-width:900px){
-  #sidebar{transform:translateX(-100%);transition:transform .2s}
+  #sidebar{transform:translateX(-100%);transition:transform .2s;z-index:150}
+  #sidebar.open{transform:translateX(0);box-shadow:0 0 50px rgba(0,0,0,.35)}
   #main{margin-left:0}
   .detail-grid{grid-template-columns:1fr}
+  .adm-burger{display:inline-flex;align-items:center}
 }
 </style>
 </head>
@@ -266,8 +271,10 @@ tr:hover td{background:#fafaf8}
 </div>
 
 <!-- ══ MAIN ══ -->
+<div id="sb-overlay"></div>
 <div id="main">
   <div class="topbar">
+    <button class="adm-burger" id="admBurger" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">☰</button>
     <div class="topbar-title" id="page-title">Dashboard</div>
     <div class="topbar-right">
       <input class="tb-search" type="text" placeholder="Search customers..." oninput="searchCustomers(this.value)" id="global-search">
@@ -1275,6 +1282,17 @@ function deleteCustomer(id) {
   }).catch(function(err){ alert('Error: ' + err.message); });
 }
 
+</script>
+
+<script>
+(function(){
+  var sb=document.getElementById('sidebar'),ov=document.getElementById('sb-overlay'),btn=document.getElementById('admBurger');
+  if(!sb||!ov||!btn)return;
+  function setOpen(o){sb.classList.toggle('open',o);ov.classList.toggle('show',o);btn.setAttribute('aria-expanded',o?'true':'false');btn.textContent=o?'\u2715':'\u2630';}
+  btn.addEventListener('click',function(){setOpen(!sb.classList.contains('open'));});
+  ov.addEventListener('click',function(){setOpen(false);});
+  sb.addEventListener('click',function(e){if(e.target.closest('.sbi'))setOpen(false);});
+})();
 </script>
 </body>
 </html>
