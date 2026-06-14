@@ -243,6 +243,11 @@ tr:hover td{background:#fafaf8}
         <label class="lfl">Password</label>
         <input class="lfi" type="password" id="admin-pass" placeholder="••••••••" required>
       </div>
+      <div class="lfrow">
+        <label class="lfl">Authenticator code</label>
+        <input class="lfi" type="text" id="admin-code" placeholder="6-digit code" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+        <div style="font-size:.7rem;color:rgba(255,255,255,.4);margin-top:5px">Required once two-factor authentication is enabled. Leave blank otherwise.</div>
+      </div>
       <button type="submit" class="login-btn">Sign in →</button>
     </form>
   </div>
@@ -266,6 +271,9 @@ tr:hover td{background:#fafaf8}
   <div class="sbi" onclick="openModal('create-customer-modal')"><span class="sbi-ic">+</span>Create account</div>
   <div class="sbi" onclick="openModal('create-demo-modal')"><span class="sbi-ic">◻</span>Create demo</div>
   <div class="sbi" onclick="showPage('audit-log')"><span class="sbi-ic">≡</span>Audit log</div>
+
+  <div class="sb-section">Security</div>
+  <div class="sbi" onclick="open2faSetup()"><span class="sbi-ic">🔒</span>Two-factor auth<span class="sb-badge" id="badge-2fa" style="display:none;background:var(--gr);color:#fff">on</span></div>
 
   <div class="sb-bottom">
     <div style="background:linear-gradient(135deg,rgba(245,200,66,.22),rgba(245,200,66,.10));border:1px solid rgba(245,200,66,.35);border-radius:10px;padding:10px 13px">
@@ -687,6 +695,43 @@ tr:hover td{background:#fafaf8}
   </div>
 </div>
 
+<!-- Two-factor authentication setup -->
+<div class="modal-overlay" id="twofa-setup-modal">
+  <div class="modal">
+    <div class="modal-hed">Two-factor authentication</div>
+    <div id="twofa-status" style="font-size:.84rem;margin-bottom:12px"></div>
+
+    <div id="twofa-intro">
+      <div class="modal-sub">Add a second layer of login security with an authenticator app (Google Authenticator, Authy, 1Password, etc). You'll generate a secret, save it on the server, and from then on every admin login asks for a 6-digit code.</div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('twofa-setup-modal')">Close</button>
+        <button class="btn btn-gold" id="twofa-gen-btn" onclick="generate2fa()">Generate a new secret →</button>
+      </div>
+    </div>
+
+    <div id="twofa-enroll" style="display:none">
+      <div style="text-align:center;margin:8px 0 14px">
+        <img id="twofa-qr" alt="2FA QR code" style="width:200px;height:200px;border:1px solid var(--bd);border-radius:10px;background:#fff;padding:6px">
+      </div>
+      <div style="font-size:.8rem;color:var(--mu);margin-bottom:6px">1. Scan the QR with your authenticator app — or enter this key manually:</div>
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        <input class="fi" id="twofa-secret" readonly style="font-family:'DM Mono',monospace;font-size:.8rem">
+        <button class="btn btn-sm" onclick="copy2faSecret()">Copy</button>
+      </div>
+      <div style="font-size:.8rem;color:var(--mu);margin-bottom:6px">2. Add this exact value to Railway as <b>ADMIN_TOTP_SECRET</b>, then redeploy the backend. (Until you do, 2FA stays off — so you can't lock yourself out.)</div>
+      <div style="font-size:.8rem;color:var(--mu);margin:12px 0 6px">3. Confirm a current 6-digit code to verify your app is set up correctly:</div>
+      <div style="display:flex;gap:6px">
+        <input class="fi" id="twofa-confirm-code" placeholder="6-digit code" inputmode="numeric" maxlength="6">
+        <button class="btn btn-sm" onclick="confirm2fa()">Verify</button>
+      </div>
+      <div id="twofa-confirm-msg" style="font-size:.82rem;margin-top:8px"></div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('twofa-setup-modal')">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════
 // CONFIG
@@ -712,6 +757,7 @@ async function handleLogin(e) {
   e.preventDefault();
   const email = document.getElementById('admin-email').value.trim();
   const pass  = document.getElementById('admin-pass').value;
+  const code  = document.getElementById('admin-code').value.trim();
   const err   = document.getElementById('login-err');
   const btn   = e.target.querySelector('button');
   btn.disabled = true; btn.textContent = 'Signing in...';
@@ -720,7 +766,7 @@ async function handleLogin(e) {
     const res = await fetch(API + '/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: pass })
+      body: JSON.stringify({ email, password: pass, code })
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.token) {
@@ -733,6 +779,8 @@ async function handleLogin(e) {
       err.style.display = 'block';
       err.textContent = data.error || 'Invalid credentials';
       btn.disabled = false; btn.textContent = 'Sign in →';
+      // If the server says a second factor is needed, draw attention to the code field.
+      if (data.twofa) document.getElementById('admin-code').focus();
     }
   } catch(ex) {
     err.style.display = 'block';
@@ -807,6 +855,7 @@ async function loadAllData() {
     renderChurnedTable(data.customers.filter(c => c.status === 'cancelled'));
     renderFlaggedTable();
     updateFlaggedBadge();
+    load2faStatus();
     renderAuditLog(data.auditLog || []);
     document.getElementById('badge-customers').textContent = data.customers.filter(c => c.status === 'active').length;
   } else {
@@ -1378,6 +1427,71 @@ function refreshData() {
 async function loadAuditLog() {
   const data = await apiFetch('/admin/customers');
   if (data && data.auditLog) renderAuditLog(data.auditLog);
+}
+
+// ══════════════════════════════════════════════
+// TWO-FACTOR AUTH (TOTP) SETUP
+// ══════════════════════════════════════════════
+let _twofaSecret = null;
+
+async function load2faStatus() {
+  const data = await apiFetch('/admin/2fa/status');
+  const badge = document.getElementById('badge-2fa');
+  if (badge) badge.style.display = (data && data.enabled) ? 'inline-block' : 'none';
+}
+
+function open2faSetup() {
+  // Reset modal to its intro state each time.
+  _twofaSecret = null;
+  document.getElementById('twofa-enroll').style.display = 'none';
+  document.getElementById('twofa-intro').style.display = 'block';
+  document.getElementById('twofa-confirm-msg').textContent = '';
+  document.getElementById('twofa-confirm-code').value = '';
+  const statusEl = document.getElementById('twofa-status');
+  statusEl.textContent = 'Checking status…';
+  openModal('twofa-setup-modal');
+  apiFetch('/admin/2fa/status').then(data => {
+    if (data && data.enabled) {
+      statusEl.innerHTML = '<span class="badge badge-green">Enabled</span> A second factor is currently required at login.';
+    } else {
+      statusEl.innerHTML = '<span class="badge badge-gray">Not enabled</span> Login currently uses password only.';
+    }
+  });
+}
+
+async function generate2fa() {
+  const btn = document.getElementById('twofa-gen-btn');
+  btn.disabled = true; btn.textContent = 'Generating…';
+  const { ok, data } = await adminWrite('/admin/2fa/setup', 'POST');
+  btn.disabled = false; btn.textContent = 'Generate a new secret →';
+  if (!ok || !data.secret) return alert('Could not generate a secret: ' + ((data && data.error) || 'server error'));
+  _twofaSecret = data.secret;
+  document.getElementById('twofa-qr').src = data.qr;
+  document.getElementById('twofa-secret').value = data.secret;
+  document.getElementById('twofa-intro').style.display = 'none';
+  document.getElementById('twofa-enroll').style.display = 'block';
+}
+
+function copy2faSecret() {
+  const el = document.getElementById('twofa-secret');
+  el.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  if (navigator.clipboard) navigator.clipboard.writeText(el.value).catch(() => {});
+}
+
+async function confirm2fa() {
+  const code = document.getElementById('twofa-confirm-code').value.trim();
+  const msg = document.getElementById('twofa-confirm-msg');
+  if (!_twofaSecret) { msg.style.color = 'var(--re)'; msg.textContent = 'Generate a secret first.'; return; }
+  if (!/^\d{6}$/.test(code)) { msg.style.color = 'var(--re)'; msg.textContent = 'Enter the 6-digit code from your app.'; return; }
+  const { ok, data } = await adminWrite('/admin/2fa/verify', 'POST', { secret: _twofaSecret, code });
+  if (ok && data.valid) {
+    msg.style.color = 'var(--gr)';
+    msg.innerHTML = '✓ Code verified. Once <b>ADMIN_TOTP_SECRET</b> is set in Railway and redeployed, this code will be required at login.';
+  } else {
+    msg.style.color = 'var(--re)';
+    msg.textContent = '✗ That code didn\u2019t match. Check your app\u2019s clock and try the current code.';
+  }
 }
 
 // ══════════════════════════════════════════════
