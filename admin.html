@@ -470,6 +470,7 @@ tr:hover td{background:#fafaf8}
         <span id="detail-type-badge" class="badge" style="margin-left:4px"></span>
         <div style="margin-left:auto;display:flex;gap:8px">
           <button class="btn btn-gold btn-sm" id="impersonate-btn" onclick="impersonateCustomer()">👁 View as customer</button>
+          <button class="btn btn-sm" onclick="openEditAccount()">✎ Edit account</button>
           <button class="btn btn-sm" id="toggle-status-btn" onclick="toggleCustomerStatus()"></button>
           <button class="btn btn-sm" onclick="openModal('add-location-modal')">+ Add location</button>
           <button class="btn btn-sm" onclick="openModal('add-user-modal')">+ Add user</button>
@@ -494,7 +495,7 @@ tr:hover td{background:#fafaf8}
               <button class="btn btn-sm" onclick="openModal('add-location-modal')">+ Add</button>
             </div>
             <table>
-              <thead><tr><th>Business name</th><th>Platform</th><th>Connected</th><th>Status</th></tr></thead>
+              <thead><tr><th>Business name</th><th>Platform</th><th>Connected</th><th>Status</th><th></th></tr></thead>
               <tbody id="detail-locations-tbody"></tbody>
             </table>
           </div>
@@ -506,7 +507,7 @@ tr:hover td{background:#fafaf8}
               <button class="btn btn-sm" onclick="openModal('add-user-modal')">+ Invite</button>
             </div>
             <table>
-              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last login</th></tr></thead>
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last login</th><th></th></tr></thead>
               <tbody id="detail-users-tbody"></tbody>
             </table>
           </div>
@@ -633,6 +634,55 @@ tr:hover td{background:#fafaf8}
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('add-user-modal')">Cancel</button>
       <button class="btn btn-gold" onclick="addUser()">Send invite →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit account -->
+<div class="modal-overlay" id="edit-account-modal">
+  <div class="modal">
+    <div class="modal-hed">Edit account</div>
+    <div class="modal-sub">Update the account owner's name, login email, and alert preferences.</div>
+    <div class="frow"><label class="fl">Account name</label><input class="fi" id="ea-name"></div>
+    <div class="frow"><label class="fl">Login / contact email</label><input class="fi" type="email" id="ea-email"></div>
+    <div class="frow"><label class="fl">Alert preferences</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:.84rem;margin:6px 0"><input type="checkbox" id="ea-alert-negative"> Negative review alerts (1–2★)</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:.84rem;margin:6px 0"><input type="checkbox" id="ea-alert-all"> All new review alerts</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:.84rem;margin:6px 0"><input type="checkbox" id="ea-alert-digest"> Weekly digest email</label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-account-modal')">Cancel</button>
+      <button class="btn btn-gold" id="ea-save-btn" onclick="saveAccountEdit()">Save changes →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit location -->
+<div class="modal-overlay" id="edit-location-modal">
+  <div class="modal">
+    <div class="modal-hed">Edit location</div>
+    <div class="modal-sub">Edit this location's details, reply settings, and review links.</div>
+    <input type="hidden" id="el-id">
+    <div class="frow"><label class="fl">Business name</label><input class="fi" id="el-business-name"></div>
+    <div class="frow"><label class="fl">Business type</label><select class="fsel" id="el-business-type"></select></div>
+    <div class="frow"><label class="fl">Contact / alert email</label><input class="fi" type="email" id="el-contact-email"></div>
+    <div class="frow"><label class="fl">Reply tone</label>
+      <select class="fsel" id="el-tone">
+        <option value="warm">Warm &amp; Friendly</option>
+        <option value="professional">Professional</option>
+        <option value="casual">Casual</option>
+        <option value="formal">Formal</option>
+      </select>
+    </div>
+    <div class="frow"><label class="fl" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.84rem;font-weight:500"><input type="checkbox" id="el-auto-reply"> Auto-reply enabled (off = approval mode)</label></div>
+    <div class="frow"><label class="fl" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.84rem;font-weight:500"><input type="checkbox" id="el-active"> Location active (counts toward billing)</label></div>
+    <div class="frow"><label class="fl">Custom reply instructions</label><textarea class="fi" id="el-custom" rows="2" style="resize:vertical"></textarea></div>
+    <div class="frow"><label class="fl">Google review URL</label><input class="fi" id="el-google-url" placeholder="https://g.page/..."></div>
+    <div class="frow"><label class="fl">Facebook review URL</label><input class="fi" id="el-facebook-url"></div>
+    <div class="frow"><label class="fl">Yelp review URL</label><input class="fi" id="el-yelp-url"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-location-modal')">Cancel</button>
+      <button class="btn btn-gold" id="el-save-btn" onclick="saveLocationEdit()">Save changes →</button>
     </div>
   </div>
 </div>
@@ -980,7 +1030,7 @@ async function openCustomerDetail(id) {
     <div class="detail-row"><span class="detail-row-label">Type</span><span class="detail-row-val">${esc(c.type||'Direct')}</span></div>
     <div class="detail-row"><span class="detail-row-label">MRR</span><span class="detail-row-val" style="color:var(--gr)">${fmt$(mrr)}/mo</span></div>
     <div class="detail-row"><span class="detail-row-label">Locations</span><span class="detail-row-val">${c.location_count||0}</span></div>
-    <div class="detail-row"><span class="detail-row-label">Stripe ID</span><span class="detail-row-val" style="font-family:'DM Mono',monospace;font-size:.72rem">${esc(c.stripe_customer_id)||'—'}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Stripe ID</span><span class="detail-row-val" style="font-family:'DM Mono',monospace;font-size:.72rem">${c.stripe_customer_id ? `<a href="https://dashboard.stripe.com/customers/${esc(c.stripe_customer_id)}" target="_blank" rel="noopener" style="color:var(--bl);font-weight:600">${esc(c.stripe_customer_id)} ↗</a>` : '—'}</span></div>
     <div class="detail-row"><span class="detail-row-label">Signed up</span><span class="detail-row-val">${fmtDate(c.created_at)}</span></div>
     <div class="detail-row"><span class="detail-row-label">Last login</span><span class="detail-row-val">${c.last_login ? daysSince(c.last_login) + ' days ago' : '—'}</span></div>
   `;
@@ -1001,19 +1051,27 @@ async function openCustomerDetail(id) {
         <td>${esc(l.platform||'google')}</td>
         <td>${l.refresh_token ? '<span style="color:var(--gr)">✓ Connected</span>' : '<span style="color:var(--mu)">Not connected</span>'}</td>
         <td>${l.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Inactive</span>'}</td>
+        <td><button class="btn btn-sm btn-ghost" onclick="openLocationEdit('${l.id}')">Edit</button></td>
       </tr>`).join('')
-    : '<tr><td colspan="4" style="color:var(--mu);padding:16px">No locations</td></tr>';
+    : '<tr><td colspan="5" style="color:var(--mu);padding:16px">No locations</td></tr>';
 
   // Team
   const users = c.team_members || [];
   document.getElementById('detail-users-tbody').innerHTML = users.length
-    ? users.map(u=>`<tr>
-        <td style="font-weight:600">${esc(u.name)||'—'}</td>
+    ? users.map(u=>{
+        const suspended = u.status === 'suspended';
+        const roleOpts = ['admin','manager','staff'].map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('');
+        return `<tr style="${suspended?'opacity:.55':''}">
+        <td style="font-weight:600">${esc(u.name)||'—'}${suspended?' <span class="badge badge-gray">suspended</span>':''}</td>
         <td style="color:var(--mu)">${esc(u.email)}</td>
-        <td>${esc(u.role||'staff')}</td>
-        <td style="color:var(--mu);font-size:.75rem">${u.last_login ? daysSince(u.last_login) + 'd ago' : '—'}</td>
-      </tr>`).join('')
-    : '<tr><td colspan="4" style="color:var(--mu);padding:16px">No team members</td></tr>';
+        <td><select class="fsel" style="padding:5px 8px;font-size:.78rem;width:auto" onchange="changeTeamRole('${u.id}', this.value)">${roleOpts}</select></td>
+        <td style="color:var(--mu);font-size:.75rem">${u.last_login_at ? daysSince(u.last_login_at) + 'd ago' : (u.last_login ? daysSince(u.last_login)+'d ago' : '—')}</td>
+        <td><div style="display:flex;gap:4px">
+          <button class="btn btn-sm" onclick="toggleSuspend('${u.id}', ${!suspended})">${suspended?'Reactivate':'Suspend'}</button>
+          <button class="btn btn-sm btn-danger" onclick="removeTeamMember('${u.id}')" title="Remove">🗑</button>
+        </div></td>
+      </tr>`;}).join('')
+    : '<tr><td colspan="5" style="color:var(--mu);padding:16px">No team members</td></tr>';
 
   // Integrations
   const ints = c.integrations || [];
@@ -1320,6 +1378,155 @@ function refreshData() {
 async function loadAuditLog() {
   const data = await apiFetch('/admin/customers');
   if (data && data.auditLog) renderAuditLog(data.auditLog);
+}
+
+// ══════════════════════════════════════════════
+// ADMIN EDITS (Tier 1 & 2) — account / location / team
+// ══════════════════════════════════════════════
+
+const BUSINESS_TYPES = ['Accounting / Tax','Auto Repair','Automotive','Bar / Brewery','Barber Shop','Beauty / Salon / Spa','Cafe / Coffee Shop','Car Dealership','Car Wash / Detailing','Childcare / Daycare','Chiropractic','Cleaning Services','Dental','E-commerce','Education / Tutoring','Event Services','Financial Services','Fitness / Wellness','Grocery / Convenience','Gym / Personal Training','HVAC / Plumbing / Electrical','Healthcare / Medical','Home Services (general)','Hotel / Hospitality','IT / Tech Services','Insurance','Landscaping / Lawn Care','Legal','Marketing / Agency','Mental Health / Therapy','Moving / Storage','Nail Salon','Optometry','Pest Control','Pet Services / Grooming','Photography','Professional Services','Real Estate','Restaurant / Food','Retail / Shop','Roofing / Construction','Tattoo / Piercing','Veterinary','Yoga / Pilates Studio','Other'];
+
+// Write helper — raw fetch with the admin token so real errors surface
+// (apiFetch swallows errors and returns null → would fake success).
+async function adminWrite(path, method, body) {
+  try {
+    const res = await fetch(`${API}${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (res.status === 401 || res.status === 403) { handleSessionExpired(); return { ok:false, data:{ error:'Session expired' } }; }
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, data };
+  } catch (err) {
+    return { ok:false, data:{ error: err.message || 'network error' } };
+  }
+}
+
+// ── Edit account ──
+function openEditAccount() {
+  const c = state.currentCustomer;
+  if (!c) return;
+  document.getElementById('ea-name').value  = c.name || '';
+  document.getElementById('ea-email').value = c.email || '';
+  let prefs = c.notification_prefs || {};
+  if (typeof prefs === 'string') { try { prefs = JSON.parse(prefs); } catch (e) { prefs = {}; } }
+  document.getElementById('ea-alert-negative').checked = prefs.negative !== false;
+  document.getElementById('ea-alert-all').checked      = !!prefs.all_reviews;
+  document.getElementById('ea-alert-digest').checked   = prefs.weekly_digest !== false;
+  openModal('edit-account-modal');
+}
+
+async function saveAccountEdit() {
+  const c = state.currentCustomer;
+  if (!c) return;
+  const btn = document.getElementById('ea-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const body = {
+    name:  document.getElementById('ea-name').value.trim(),
+    email: document.getElementById('ea-email').value.trim(),
+    notificationPrefs: {
+      negative:      document.getElementById('ea-alert-negative').checked,
+      all_reviews:   document.getElementById('ea-alert-all').checked,
+      weekly_digest: document.getElementById('ea-alert-digest').checked,
+    }
+  };
+  const { ok, data } = await adminWrite(`/admin/customers/${c.id}/account`, 'PATCH', body);
+  btn.disabled = false; btn.textContent = 'Save changes →';
+  if (!ok) return alert('Could not save: ' + (data.error || 'server error'));
+  closeModal('edit-account-modal');
+  await openCustomerDetail(c.id);
+  loadAllData();
+  alert('Account updated ✓');
+}
+
+// ── Edit location ──
+function openLocationEdit(locId) {
+  const c = state.currentCustomer;
+  if (!c) return;
+  const l = (c.locations || []).find(x => String(x.id) === String(locId));
+  if (!l) return alert('Location not found');
+  // Populate the business-type dropdown (include the current value if custom).
+  const sel = document.getElementById('el-business-type');
+  const cur = l.business_type || '';
+  const opts = BUSINESS_TYPES.slice();
+  if (cur && !opts.includes(cur)) opts.unshift(cur);
+  sel.innerHTML = '<option value="">— none —</option>' + opts.map(t => `<option value="${esc(t)}" ${t===cur?'selected':''}>${esc(t)}</option>`).join('');
+
+  document.getElementById('el-id').value             = l.id;
+  document.getElementById('el-business-name').value  = l.business_name || '';
+  document.getElementById('el-contact-email').value  = l.contact_email || '';
+  document.getElementById('el-tone').value           = l.tone || 'warm';
+  document.getElementById('el-auto-reply').checked   = !!l.auto_reply;
+  document.getElementById('el-active').checked       = l.is_active !== false;
+  document.getElementById('el-custom').value         = l.custom_instructions || '';
+  document.getElementById('el-google-url').value     = l.google_review_url || '';
+  document.getElementById('el-facebook-url').value   = l.facebook_review_url || '';
+  document.getElementById('el-yelp-url').value       = l.yelp_review_url || '';
+  openModal('edit-location-modal');
+}
+
+async function saveLocationEdit() {
+  const c = state.currentCustomer;
+  const locId = document.getElementById('el-id').value;
+  if (!c || !locId) return;
+  const btn = document.getElementById('el-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const fields = {
+    businessName:       document.getElementById('el-business-name').value.trim(),
+    businessType:       document.getElementById('el-business-type').value,
+    contactEmail:       document.getElementById('el-contact-email').value.trim(),
+    tone:               document.getElementById('el-tone').value,
+    autoReply:          document.getElementById('el-auto-reply').checked,
+    isActive:           document.getElementById('el-active').checked,
+    customInstructions: document.getElementById('el-custom').value,
+  };
+  const reviewUrls = {
+    googleReviewUrl:   document.getElementById('el-google-url').value.trim(),
+    facebookReviewUrl: document.getElementById('el-facebook-url').value.trim(),
+    yelpReviewUrl:     document.getElementById('el-yelp-url').value.trim(),
+  };
+
+  const r1 = await adminWrite(`/admin/locations/${locId}`, 'PUT', fields);
+  if (!r1.ok) { btn.disabled = false; btn.textContent = 'Save changes →'; return alert('Could not save location: ' + (r1.data.error || 'server error')); }
+  const r2 = await adminWrite(`/admin/locations/${locId}/review-urls`, 'PUT', reviewUrls);
+  btn.disabled = false; btn.textContent = 'Save changes →';
+  if (!r2.ok) return alert('Location saved, but review links failed: ' + (r2.data.error || 'server error'));
+
+  closeModal('edit-location-modal');
+  await openCustomerDetail(c.id);
+  loadAllData();
+  alert('Location updated ✓');
+}
+
+// ── Team management ──
+async function changeTeamRole(memberId, role) {
+  const c = state.currentCustomer;
+  const { ok, data } = await adminWrite(`/admin/team/${memberId}/role`, 'PATCH', { role });
+  if (!ok) { alert('Could not change role: ' + (data.error || 'server error')); if (c) openCustomerDetail(c.id); return; }
+  loadAuditLog();
+}
+
+async function toggleSuspend(memberId, suspend) {
+  const c = state.currentCustomer;
+  if (!confirm(suspend ? 'Suspend this team member? They will be unable to log in.' : 'Reactivate this team member?')) {
+    if (c) openCustomerDetail(c.id); return;
+  }
+  const { ok, data } = await adminWrite(`/admin/team/${memberId}/suspend`, 'PATCH', { suspend });
+  if (!ok) return alert('Could not update member: ' + (data.error || 'server error'));
+  if (c) await openCustomerDetail(c.id);
+  loadAuditLog();
+}
+
+async function removeTeamMember(memberId) {
+  const c = state.currentCustomer;
+  if (!confirm('Remove this team member permanently? This cannot be undone.')) return;
+  const { ok, data } = await adminWrite(`/admin/team/${memberId}`, 'DELETE');
+  if (!ok) return alert('Could not remove member: ' + (data.error || 'server error'));
+  if (c) await openCustomerDetail(c.id);
+  loadAuditLog();
+  alert('Team member removed ✓');
 }
 
 // ══════════════════════════════════════════════
