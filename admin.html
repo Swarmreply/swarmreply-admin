@@ -531,7 +531,7 @@ tr:hover td{background:#fafaf8}
           <div class="detail-section" style="margin-bottom:14px">
             <div class="detail-section-header">
               <div class="detail-section-title">Internal notes</div>
-              <button class="btn btn-sm" onclick="saveNote()">Save</button>
+              <button class="btn btn-sm" id="save-note-btn" onclick="saveNote()">Save note</button>
             </div>
             <div style="padding:12px 18px">
               <textarea class="notes-area" id="customer-notes" placeholder="Add internal notes about this customer..."></textarea>
@@ -642,8 +642,6 @@ tr:hover td{background:#fafaf8}
 // CONFIG
 // ══════════════════════════════════════════════
 const API = 'https://swarmreply-backend-production.up.railway.app/api';
-const ADMIN_EMAIL = 'nickswarmreply@gmail.com';
-const ADMIN_PASS  = 'Sadienova0711';
 
 // ══════════════════════════════════════════════
 // STATE
@@ -674,7 +672,7 @@ async function handleLogin(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password: pass })
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok && data.token) {
       state.token = data.token;
       sessionStorage.setItem('admin_auth', '1');
@@ -687,16 +685,9 @@ async function handleLogin(e) {
       btn.disabled = false; btn.textContent = 'Sign in →';
     }
   } catch(ex) {
-    // Fallback to local auth if API unavailable
-    if (email === ADMIN_EMAIL && pass === ADMIN_PASS) {
-      document.getElementById('login-screen').style.display = 'none';
-      sessionStorage.setItem('admin_auth', '1');
-      loadAllData();
-    } else {
-      err.style.display = 'block';
-      err.textContent = 'Invalid credentials';
-      btn.disabled = false; btn.textContent = 'Sign in →';
-    }
+    err.style.display = 'block';
+    err.textContent = 'Could not reach the server. Please try again.';
+    btn.disabled = false; btn.textContent = 'Sign in →';
   }
 }
 
@@ -705,11 +696,15 @@ function logout() {
   location.reload();
 }
 
-// Auto-login if session exists
-if (sessionStorage.getItem('admin_auth') === '1') {
+// Auto-login only if we have a real backend token from a prior sign-in.
+if (sessionStorage.getItem('admin_auth') === '1' && sessionStorage.getItem('admin_token')) {
   document.getElementById('login-screen').style.display = 'none';
-  state.token = sessionStorage.getItem('admin_token') || null;
+  state.token = sessionStorage.getItem('admin_token');
   loadAllData();
+} else {
+  // Clear any stale/partial session (e.g. left over from older versions).
+  sessionStorage.removeItem('admin_auth');
+  sessionStorage.removeItem('admin_token');
 }
 
 // ══════════════════════════════════════════════
@@ -720,6 +715,7 @@ async function apiFetch(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json' };
     if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
     const res = await fetch(API + path, { ...opts, headers: { ...headers, ...opts.headers } });
+    if (res.status === 401 || res.status === 403) { handleSessionExpired(); return null; }
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
   } catch (err) {
@@ -728,10 +724,27 @@ async function apiFetch(path, opts = {}) {
   }
 }
 
+// A 401/403 means the admin token is missing or expired — send back to login.
+let _sessionExpiredShown = false;
+function handleSessionExpired() {
+  if (_sessionExpiredShown) return;
+  _sessionExpiredShown = true;
+  sessionStorage.removeItem('admin_auth');
+  sessionStorage.removeItem('admin_token');
+  state.token = null;
+  const err = document.getElementById('login-err');
+  if (err) { err.style.display = 'block'; err.textContent = 'Your session expired — please sign in again.'; }
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
 // ══════════════════════════════════════════════
 // LOAD DATA — queries Supabase via backend
 // ══════════════════════════════════════════════
 async function loadAllData() {
+  ['customers-tbody','recent-customers-tbody','revenue-tbody'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--mu);padding:28px">Loading…</td></tr>';
+  });
   const data = await apiFetch('/admin/customers');
   if (data && data.customers) {
     state.customers = data.customers;
@@ -742,6 +755,8 @@ async function loadAllData() {
     renderRevenueTable(data.customers);
     renderIntegrationsView(data.customers);
     renderChurnedTable(data.customers.filter(c => c.status === 'cancelled'));
+    renderFlaggedTable();
+    updateFlaggedBadge();
     renderAuditLog(data.auditLog || []);
     document.getElementById('badge-customers').textContent = data.customers.filter(c => c.status === 'active').length;
   } else {
@@ -760,25 +775,38 @@ function fmt$(n){ return '$' + (n||0).toLocaleString(); }
 function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 function daysSince(d){ return Math.floor((Date.now()-new Date(d))/(1000*60*60*24)); }
 
+// Escape customer-controlled text before putting it in innerHTML (prevents stored XSS
+// from things like a business name containing HTML/script).
+function esc(v){
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/[&<>"']/g, ch => (
+    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]
+  ));
+}
+
 function statusBadge(s) {
   const map = { active:'badge-green', cancelled:'badge-red', paused:'badge-gold', trial:'badge-blue', demo:'badge-gray' };
-  return `<span class="badge ${map[s]||'badge-gray'}">${s}</span>`;
+  return `<span class="badge ${map[s]||'badge-gray'}">${esc(s)}</span>`;
+}
+
+function planBadge(p) {
+  return `<span class="badge badge-gray" style="text-transform:capitalize">${esc(p||'starter')}</span>`;
 }
 
 function typeBadge(t) {
   const map = { agency:'badge-blue', demo:'badge-gray', direct:'' };
   if (!t || t === 'direct') return '';
-  return `<span class="badge ${map[t]||'badge-gray'}">${t}</span>`;
+  return `<span class="badge ${map[t]||'badge-gray'}">${esc(t)}</span>`;
 }
 
 function calcMrr(c) {
   if (c.is_demo) return 0;
-  if (c.mrr !== undefined) return c.mrr;
+  if (c.mrr !== undefined) return c.mrr;   // backend value wins
   const locs = c.location_count || 0;
   if (locs === 0) return 0;
-  let total = 99;
-  if (locs > 1) total += Math.min(locs-1,4)*79;
-  if (locs > 5) total += Math.min(locs-5,20)*69;
+  let total = Math.min(locs, 2) * 99;                 // locations 1–2 @ $99
+  if (locs > 2)  total += Math.min(locs - 2, 23) * 89; // 3–25 @ $89
+  if (locs > 25) total += Math.min(locs - 25, 74) * 79; // 26–99 @ $79
   return total;
 }
 
@@ -807,16 +835,16 @@ function renderCustomersTable(customers) {
     const mrr = calcMrr(c);
     const ints = (c.integrations||[]);
     const intBadges = ints.length
-      ? ints.map(i=>`<span class="badge badge-blue" style="margin:1px">${i}</span>`).join('')
+      ? ints.map(i=>`<span class="badge badge-blue" style="margin:1px">${esc(i)}</span>`).join('')
       : '<span class="badge badge-gray">Web only</span>';
     const lastLogin = c.last_login ? daysSince(c.last_login) + 'd ago' : '—';
     return `<tr>
       <td>
-        <div style="font-weight:600">${c.name||'—'}</div>
-        <div style="font-size:.72rem;color:var(--mu)">${c.email||''}</div>
+        <div style="font-weight:600">${esc(c.name)||'—'}</div>
+        <div style="font-size:.72rem;color:var(--mu)">${esc(c.email)}</div>
       </td>
       <td>${typeBadge(c.type) || '<span style="color:var(--mu);font-size:.72rem">Direct</span>'}</td>
-      <td>${statusBadge(c.plan||'starter')}</td>
+      <td>${planBadge(c.plan)}</td>
       <td style="font-weight:700;font-family:'DM Mono',monospace">${c.location_count||0}</td>
       <td>${intBadges}</td>
       <td style="font-weight:700;font-family:'DM Mono',monospace">${mrr ? fmt$(mrr) : '—'}</td>
@@ -841,8 +869,8 @@ function renderRecentCustomers(customers) {
   tb.innerHTML = customers.map(c => {
     const mrr = calcMrr(c);
     return `<tr>
-      <td><div style="font-weight:600">${c.name}</div><div style="font-size:.72rem;color:var(--mu)">${c.email}</div></td>
-      <td>${statusBadge(c.plan||'starter')}</td>
+      <td><div style="font-weight:600">${esc(c.name)}</div><div style="font-size:.72rem;color:var(--mu)">${esc(c.email)}</div></td>
+      <td>${planBadge(c.plan)}</td>
       <td style="font-weight:700">${c.location_count||0}</td>
       <td style="font-weight:700;font-family:'DM Mono',monospace">${mrr ? fmt$(mrr) : '—'}</td>
       <td style="color:var(--mu);font-size:.75rem">${fmtDate(c.created_at)}</td>
@@ -856,8 +884,8 @@ function renderRevenueTable(customers) {
   const active = customers.filter(c=>c.status==='active').sort((a,b)=>calcMrr(b)-calcMrr(a));
   document.getElementById('revenue-tbody').innerHTML = active.map(c=>{
     return `<tr>
-      <td><div style="font-weight:600">${c.name}</div><div style="font-size:.72rem;color:var(--mu)">${c.email}</div></td>
-      <td>${statusBadge(c.plan||'starter')}</td>
+      <td><div style="font-weight:600">${esc(c.name)}</div><div style="font-size:.72rem;color:var(--mu)">${esc(c.email)}</div></td>
+      <td>${planBadge(c.plan)}</td>
       <td style="font-weight:700">${c.location_count||0}</td>
       <td style="font-weight:700;font-family:'DM Mono',monospace;color:var(--gr)">${fmt$(calcMrr(c))}/mo</td>
       <td style="color:var(--mu);font-size:.75rem">${fmtDate(c.created_at)}</td>
@@ -881,7 +909,7 @@ function renderIntegrationsView(customers) {
   document.getElementById('integrations-tbody').innerHTML = customers.filter(c=>c.status==='active').map(c=>{
     const has = i => (c.integrations||[]).includes(i);
     return `<tr>
-      <td><div style="font-weight:600">${c.name}</div></td>
+      <td><div style="font-weight:600">${esc(c.name)}</div></td>
       ${ints.map(i=>`<td>${has(i)?'<span style="color:var(--gr);font-weight:700">✓</span>':'<span style="color:var(--bd)">—</span>'}</td>`).join('')}
     </tr>`;
   }).join('');
@@ -894,8 +922,8 @@ function renderChurnedTable(customers) {
   }
   document.getElementById('churned-tbody').innerHTML = customers.map(c=>`
     <tr>
-      <td><div style="font-weight:600">${c.name}</div><div style="font-size:.72rem;color:var(--mu)">${c.email}</div></td>
-      <td>${statusBadge(c.plan||'starter')}</td>
+      <td><div style="font-weight:600">${esc(c.name)}</div><div style="font-size:.72rem;color:var(--mu)">${esc(c.email)}</div></td>
+      <td>${planBadge(c.plan)}</td>
       <td style="font-weight:700;font-family:'DM Mono',monospace;color:var(--re)">${fmt$(calcMrr(c))}</td>
       <td style="color:var(--mu);font-size:.75rem">${fmtDate(c.updated_at||c.created_at)}</td>
       <td style="font-weight:700">${c.created_at ? daysSince(c.created_at) : '—'}</td>
@@ -911,11 +939,11 @@ function renderAuditLog(log) {
   }
   document.getElementById('audit-tbody').innerHTML = log.map(e=>`
     <tr>
-      <td style="font-size:.72rem;color:var(--mu);font-family:'DM Mono',monospace">${e.time||e.created_at||''}</td>
-      <td style="font-weight:600">${e.admin||'Admin'}</td>
-      <td>${e.action||e.event_type||''}</td>
-      <td style="color:var(--mu)">${e.customer||e.customer_id||''}</td>
-      <td style="font-size:.75rem;color:var(--mu)">${e.detail||e.metadata||''}</td>
+      <td style="font-size:.72rem;color:var(--mu);font-family:'DM Mono',monospace">${esc(e.time||e.created_at)}</td>
+      <td style="font-weight:600">${esc(e.admin||'Admin')}</td>
+      <td>${esc(e.action||e.event_type)}</td>
+      <td style="color:var(--mu)">${esc(e.customer||e.customer_id)}</td>
+      <td style="font-size:.75rem;color:var(--mu)">${esc(e.detail||e.metadata)}</td>
     </tr>
   `).join('');
 }
@@ -948,11 +976,11 @@ async function openCustomerDetail(id) {
   const mrr = calcMrr(c);
   document.getElementById('detail-info-rows').innerHTML = `
     <div class="detail-row"><span class="detail-row-label">Email</span><span class="detail-row-val">${c.email||'—'}</span></div>
-    <div class="detail-row"><span class="detail-row-label">Plan</span><span class="detail-row-val">${c.plan||'starter'}</span></div>
-    <div class="detail-row"><span class="detail-row-label">Type</span><span class="detail-row-val">${c.type||'Direct'}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Plan</span><span class="detail-row-val">${esc(c.plan||'starter')}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Type</span><span class="detail-row-val">${esc(c.type||'Direct')}</span></div>
     <div class="detail-row"><span class="detail-row-label">MRR</span><span class="detail-row-val" style="color:var(--gr)">${fmt$(mrr)}/mo</span></div>
     <div class="detail-row"><span class="detail-row-label">Locations</span><span class="detail-row-val">${c.location_count||0}</span></div>
-    <div class="detail-row"><span class="detail-row-label">Stripe ID</span><span class="detail-row-val" style="font-family:'DM Mono',monospace;font-size:.72rem">${c.stripe_customer_id||'—'}</span></div>
+    <div class="detail-row"><span class="detail-row-label">Stripe ID</span><span class="detail-row-val" style="font-family:'DM Mono',monospace;font-size:.72rem">${esc(c.stripe_customer_id)||'—'}</span></div>
     <div class="detail-row"><span class="detail-row-label">Signed up</span><span class="detail-row-val">${fmtDate(c.created_at)}</span></div>
     <div class="detail-row"><span class="detail-row-label">Last login</span><span class="detail-row-val">${c.last_login ? daysSince(c.last_login) + ' days ago' : '—'}</span></div>
   `;
@@ -969,8 +997,8 @@ async function openCustomerDetail(id) {
   const locs = c.locations || [];
   document.getElementById('detail-locations-tbody').innerHTML = locs.length
     ? locs.map(l=>`<tr>
-        <td style="font-weight:600">${l.business_name||l.name||'—'}</td>
-        <td>${l.platform||'google'}</td>
+        <td style="font-weight:600">${esc(l.business_name||l.name)||'—'}</td>
+        <td>${esc(l.platform||'google')}</td>
         <td>${l.refresh_token ? '<span style="color:var(--gr)">✓ Connected</span>' : '<span style="color:var(--mu)">Not connected</span>'}</td>
         <td>${l.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Inactive</span>'}</td>
       </tr>`).join('')
@@ -980,9 +1008,9 @@ async function openCustomerDetail(id) {
   const users = c.team_members || [];
   document.getElementById('detail-users-tbody').innerHTML = users.length
     ? users.map(u=>`<tr>
-        <td style="font-weight:600">${u.name||'—'}</td>
-        <td style="color:var(--mu)">${u.email||''}</td>
-        <td>${u.role||'staff'}</td>
+        <td style="font-weight:600">${esc(u.name)||'—'}</td>
+        <td style="color:var(--mu)">${esc(u.email)}</td>
+        <td>${esc(u.role||'staff')}</td>
         <td style="color:var(--mu);font-size:.75rem">${u.last_login ? daysSince(u.last_login) + 'd ago' : '—'}</td>
       </tr>`).join('')
     : '<tr><td colspan="4" style="color:var(--mu);padding:16px">No team members</td></tr>';
@@ -990,7 +1018,7 @@ async function openCustomerDetail(id) {
   // Integrations
   const ints = c.integrations || [];
   document.getElementById('detail-integrations').innerHTML = ints.length
-    ? ints.map(i=>`<span class="badge badge-blue" style="padding:5px 12px">${i}</span>`).join('')
+    ? ints.map(i=>`<span class="badge badge-blue" style="padding:5px 12px">${esc(i)}</span>`).join('')
     : '<span style="color:var(--mu);font-size:.82rem">Web only — no integrations connected</span>';
 
   // Notes
@@ -1004,11 +1032,10 @@ async function openCustomerDetail(id) {
   document.getElementById('detail-timeline').innerHTML = events.map(e=>`
     <div class="tl-item">
       <div class="tl-dot ${e.type}"></div>
-      <div><div class="tl-text">${e.text}</div><div class="tl-time">${e.time}</div></div>
+      <div><div class="tl-text">${esc(e.text)}</div><div class="tl-time">${esc(e.time)}</div></div>
     </div>
   `).join('');
 
-  addAuditEntry('Viewed customer', c.name);
   showPage('customer-detail');
 }
 
@@ -1022,7 +1049,7 @@ function impersonate(id) {
 This will open their dashboard in a new tab. Your actions will be logged.`)) return;
   apiFetch(`/admin/customers/${id}/impersonate`, { method: 'POST' }).then(data => {
     if (!data || data.error) return alert('Error: ' + (data?.error || 'Unknown'));
-    addAuditEntry('Logged in as customer', c.name, `${c.is_demo ? 'Demo' : 'Live'} account`);
+    loadAuditLog();
     // Store token in sessionStorage so the app tab can read it
     const url = `https://app.swarmreply.com/dashboard?impersonate_token=${encodeURIComponent(data.token)}&customer_name=${encodeURIComponent(c.name)}`;
     window.open(url, '_blank');
@@ -1045,57 +1072,82 @@ async function toggleStatus(id, newStatus) {
   if (!c) return;
   if (!confirm(`${newStatus === 'active' ? 'Activate' : 'Pause'} account for ${c.name}?`)) return;
 
-  c.status = newStatus;
-  addAuditEntry('Changed status', c.name, `→ ${newStatus}`);
-
-  // API call
-  await apiFetch(`/admin/customers/${id}/status`, {
+  const data = await apiFetch(`/admin/customers/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status: newStatus })
   });
-
+  if (!data || data.error) {
+    alert('Could not change status: ' + ((data && data.error) || 'server error'));
+    return;
+  }
+  c.status = newStatus;
   renderCustomersTable(state.filtered);
   if (state.currentCustomer?.id === id) openCustomerDetail(id);
+  loadAuditLog();
   alert(`Account ${newStatus === 'active' ? 'activated' : 'paused'} ✓`);
 }
 
-function toggleFlag() {
+async function toggleFlag() {
   const c = state.currentCustomer;
   if (!c) return;
-  c.flagged = !c.flagged;
-  addAuditEntry(c.flagged ? 'Flagged customer' : 'Unflagged customer', c.name);
+  const next = !c.flagged;
+  // Optimistic update, then persist. Revert if the backend rejects it.
+  c.flagged = next;
+  updateFlaggedBadge();
+  renderFlaggedTable();
+  const data = await apiFetch(`/admin/customers/${c.id}/flag`, {
+    method: 'PATCH',
+    body: JSON.stringify({ flagged: next })
+  });
+  if (!data || data.error) {
+    c.flagged = !next;           // revert
+    updateFlaggedBadge();
+    renderFlaggedTable();
+    alert('Could not update flag: ' + ((data && data.error) || 'server error'));
+    return;
+  }
+  alert(next ? 'Customer flagged for follow-up ✓' : 'Flag removed ✓');
+}
 
-  const flagged = state.customers.filter(x=>x.flagged);
+// Keep the sidebar "Flagged" badge in sync with how many customers are flagged.
+function updateFlaggedBadge() {
+  const flagged = state.customers.filter(x => x.flagged);
   const badge = document.getElementById('badge-flagged');
+  if (!badge) return;
   badge.style.display = flagged.length ? 'inline-block' : 'none';
   badge.textContent = flagged.length;
-  renderFlaggedTable();
-  alert(c.flagged ? 'Customer flagged for follow-up ✓' : 'Flag removed ✓');
 }
 
 function renderFlaggedTable() {
   const flagged = state.customers.filter(c=>c.flagged);
   document.getElementById('flagged-tbody').innerHTML = flagged.length
     ? flagged.map(c=>`<tr>
-        <td><div style="font-weight:600">${c.name}</div><div style="font-size:.72rem;color:var(--mu)">${c.email}</div></td>
+        <td><div style="font-weight:600">${esc(c.name)}</div><div style="font-size:.72rem;color:var(--mu)">${esc(c.email)}</div></td>
         <td><span class="badge badge-gold">Follow-up needed</span></td>
         <td style="color:var(--mu);font-size:.75rem">Today</td>
-        <td style="color:var(--mu);font-size:.75rem">${c.notes||'—'}</td>
+        <td style="color:var(--mu);font-size:.75rem">${esc(c.notes)||'—'}</td>
         <td><button class="btn btn-sm" onclick="openCustomerDetail('${c.id}')">View →</button></td>
       </tr>`).join('')
     : '<tr><td colspan="5" style="text-align:center;color:var(--mu);padding:32px">No flagged accounts</td></tr>';
 }
 
-function saveNote() {
+async function saveNote() {
   const c = state.currentCustomer;
   if (!c) return;
-  c.notes = document.getElementById('customer-notes').value;
-  addAuditEntry('Updated notes', c.name);
-  // Save to API
-  apiFetch(`/admin/customers/${c.id}/notes`, {
+  const notes = document.getElementById('customer-notes').value;
+  const btn = document.getElementById('save-note-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const data = await apiFetch(`/admin/customers/${c.id}/notes`, {
     method: 'PATCH',
-    body: JSON.stringify({ notes: c.notes })
+    body: JSON.stringify({ notes })
   });
+  if (btn) { btn.disabled = false; btn.textContent = 'Save note'; }
+  if (!data || data.error) {
+    alert('Could not save note: ' + ((data && data.error) || 'server error'));
+    return;
+  }
+  c.notes = notes;
+  loadAuditLog();
   alert('Notes saved ✓');
 }
 
@@ -1113,7 +1165,6 @@ function createCustomer() {
   }).then(data => {
     if (btn) { btn.disabled = false; btn.textContent = 'Create account'; }
     if (!data || data.error) return alert('Error: ' + (data?.error || 'Unknown'));
-    addAuditEntry('Created account', name, `${type} · ${plan}`);
     closeModal('create-customer-modal');
     alert(`Account created for ${name}
 Temporary password: ${data.tempPassword}`);
@@ -1136,7 +1187,6 @@ function createDemo() {
   }).then(data => {
     if (btn) { btn.disabled = false; btn.textContent = 'Create demo'; }
     if (!data || data.error) return alert('Error: ' + (data?.error || 'Unknown'));
-    addAuditEntry('Created demo', name, `${locs} location(s) · ${industry}`);
     closeModal('create-demo-modal');
     alert(`Demo created: ${name}
 Email: ${data.email}
@@ -1215,6 +1265,11 @@ function filterCustomers(filter, btn) {
 
 function searchCustomers(q) {
   state.search = q.toLowerCase();
+  // The search box lives in the topbar on every page — jump to Customers so
+  // results are actually visible instead of filtering a hidden table.
+  if (state.search && !document.getElementById('page-customers').classList.contains('active')) {
+    showPage('customers');
+  }
   applyFilters();
 }
 
@@ -1223,7 +1278,8 @@ function applyFilters() {
   if (state.filter !== 'all') result = result.filter(c => c.status === state.filter || c.type === state.filter || (state.filter === 'demo' && c.is_demo));
   if (state.search) result = result.filter(c =>
     (c.name||'').toLowerCase().includes(state.search) ||
-    (c.email||'').toLowerCase().includes(state.search)
+    (c.email||'').toLowerCase().includes(state.search) ||
+    (c.business_names||[]).some(b => (b||'').toLowerCase().includes(state.search))
   );
   state.filtered = result;
   renderCustomersTable(result);
@@ -1259,21 +1315,16 @@ function refreshData() {
   loadAllData();
 }
 
-const auditLog = [];
-function addAuditEntry(action, customer, detail='') {
-  auditLog.unshift({
-    time: new Date().toLocaleString('en-US',{hour:'2-digit',minute:'2-digit',month:'short',day:'numeric'}),
-    admin: 'Nick', action, customer, detail
-  });
-  renderAuditLog(auditLog);
+// Re-fetch and render the persistent audit log from the backend (which already
+// records every admin action). Used after actions that don't reload everything.
+async function loadAuditLog() {
+  const data = await apiFetch('/admin/customers');
+  if (data && data.auditLog) renderAuditLog(data.auditLog);
 }
 
 // ══════════════════════════════════════════════
-// INIT
+// DELETE CUSTOMER
 // ══════════════════════════════════════════════
-if (sessionStorage.getItem('admin_auth') === '1') {
-}
-// ── DELETE CUSTOMER ────────────────────────────────────
 function deleteCustomer(id) {
   const c = state.customers.find(x => x.id === id) || state.currentCustomer;
   if (!c) return;
@@ -1281,12 +1332,11 @@ function deleteCustomer(id) {
   if (!confirm('Permanently delete ' + label + ' for "' + c.name + '"?\n\nThis CANNOT be undone. All locations, reviews, and data will be deleted.')) return;
   apiFetch('/admin/customers/' + id, { method: 'DELETE' }).then(function(data) {
     if (!data || data.error) return alert('Error: ' + (data ? data.error : 'Unknown'));
-    addAuditEntry('Deleted account', c.name, c.email);
     state.customers = state.customers.filter(function(x){ return x.id !== id; });
     state.filtered  = state.filtered.filter(function(x){ return x.id !== id; });
     renderCustomersTable(state.filtered);
-    var detail = document.getElementById('customer-detail-panel');
-    if (detail) detail.style.display = 'none';
+    // If we were viewing this customer's detail page, return to the list.
+    if (document.getElementById('page-customer-detail').classList.contains('active')) showPage('customers');
     alert('Deleted: ' + c.name + ' ✓');
     loadAllData();
   }).catch(function(err){ alert('Error: ' + err.message); });
