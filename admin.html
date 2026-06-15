@@ -1177,13 +1177,17 @@ async function openCustomerDetail(id) {
   // Locations
   const locs = c.locations || [];
   document.getElementById('detail-locations-tbody').innerHTML = locs.length
-    ? locs.map(l=>`<tr>
-        <td style="font-weight:600">${esc(l.business_name||l.name)||'—'}</td>
+    ? locs.map(l=>{
+        const geoReady = (l.latitude != null && l.longitude != null) || (l.city && l.state);
+        const geoBadge = geoReady ? '' : ' <span class="badge" title="No city/state or Google location set — nearby-competitor scanning needs this. Set it under Edit." style="background:#fef3c7;color:#92400e;font-weight:600">📍 no location</span>';
+        return `<tr>
+        <td style="font-weight:600">${esc(l.business_name||l.name)||'—'}${geoBadge}</td>
         <td>${esc(l.platform||'google')}</td>
         <td>${l.refresh_token ? '<span style="color:var(--gr)">✓ Connected</span>' : '<span style="color:var(--mu)">Not connected</span>'}</td>
         <td>${l.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Inactive</span>'}</td>
         <td><button class="btn btn-sm btn-ghost" onclick="openLocationEdit('${l.id}')">Edit</button></td>
-      </tr>`).join('')
+      </tr>`;
+      }).join('')
     : '<tr><td colspan="5" style="color:var(--mu);padding:16px">No locations</td></tr>';
 
   // Team
