@@ -538,6 +538,29 @@ tr:hover td{background:#fafaf8}
             <div class="detail-rows" id="detail-info-rows"></div>
           </div>
 
+          <!-- Get Found scans -->
+          <div class="detail-section">
+            <div class="detail-section-header">
+              <div class="detail-section-title">Get Found scans</div>
+            </div>
+            <div class="detail-rows">
+              <div class="detail-row">
+                <span class="detail-row-label">AI Visibility auto-scan</span>
+                <span class="detail-row-val" style="display:flex;gap:6px;align-items:center">
+                  <button class="btn btn-sm" id="gf-ai-toggle" onclick="toggleGetFound('ai')"></button>
+                  <button class="btn btn-ghost btn-sm" onclick="resetGetFound('ai')">Reset queries</button>
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">Rank Tracking auto-scan</span>
+                <span class="detail-row-val" style="display:flex;gap:6px;align-items:center">
+                  <button class="btn btn-sm" id="gf-rank-toggle" onclick="toggleGetFound('rank')"></button>
+                  <button class="btn btn-ghost btn-sm" onclick="resetGetFound('rank')">Reset keywords</button>
+                </span>
+              </div>
+            </div>
+          </div>
+
           <!-- Locations -->
           <div class="detail-section">
             <div class="detail-section-header">
@@ -1132,6 +1155,41 @@ function renderAuditLog(log) {
 // ══════════════════════════════════════════════
 // CUSTOMER DETAIL
 // ══════════════════════════════════════════════
+// ── Get Found scan controls ──────────────────────────────────────────────
+function renderGetFoundToggles() {
+  const c = state.currentCustomer; if (!c) return;
+  const aiOn = c.ai_scans_enabled !== false;
+  const rankOn = c.rank_scans_enabled !== false;
+  const ai = document.getElementById('gf-ai-toggle');
+  const rk = document.getElementById('gf-rank-toggle');
+  if (ai) { ai.textContent = aiOn ? '✓ On' : '✕ Paused'; ai.className = 'btn btn-sm ' + (aiOn ? 'btn-gold' : 'btn-danger'); }
+  if (rk) { rk.textContent = rankOn ? '✓ On' : '✕ Paused'; rk.className = 'btn btn-sm ' + (rankOn ? 'btn-gold' : 'btn-danger'); }
+}
+
+async function toggleGetFound(which) {
+  const c = state.currentCustomer; if (!c) return;
+  const body = {};
+  if (which === 'ai')   body.aiScansEnabled   = !(c.ai_scans_enabled !== false);
+  if (which === 'rank') body.rankScansEnabled = !(c.rank_scans_enabled !== false);
+  const r = await apiFetch(`/admin/customers/${c.id}/get-found`, { method: 'PATCH', body: JSON.stringify(body) });
+  if (r && r.success) {
+    c.ai_scans_enabled = r.ai_scans_enabled;
+    c.rank_scans_enabled = r.rank_scans_enabled;
+    renderGetFoundToggles();
+  } else {
+    alert('Could not update that scan setting. Please try again.');
+  }
+}
+
+async function resetGetFound(which) {
+  const c = state.currentCustomer; if (!c) return;
+  const label = which === 'ai' ? 'AI Visibility queries' : 'Rank Tracking keywords';
+  if (!confirm(`Reset ${label} for ${c.name}?\n\nThis clears their current searches and stops the auto-scan until they set them up again.`)) return;
+  const r = await apiFetch(`/admin/customers/${c.id}/get-found/reset`, { method: 'POST', body: JSON.stringify({ target: which }) });
+  if (r && r.success) alert(`Done — ${label} reset.`);
+  else alert('Could not reset. Please try again.');
+}
+
 async function openCustomerDetail(id) {
   let c = state.customers.find(x=>x.id===id);
   if (!c) return;
@@ -1142,6 +1200,7 @@ async function openCustomerDetail(id) {
     if (detail && detail.id) c = { ...c, ...detail };
   } catch (e) { /* fall back to cached list row */ }
   state.currentCustomer = c;
+  renderGetFoundToggles();
 
   document.getElementById('detail-name').textContent = c.name;
   document.getElementById('detail-status-badge').className = 'badge ' + (c.status==='active'?'badge-green':c.status==='paused'?'badge-gold':'badge-red');
