@@ -715,6 +715,12 @@ tr:hover td{background:#fafaf8}
     <input type="hidden" id="el-id">
     <div class="frow"><label class="fl">Business name</label><input class="fi" id="el-business-name"></div>
     <div class="frow"><label class="fl">Business type</label><select class="fsel" id="el-business-type"></select></div>
+    <div class="frow"><label class="fl">City / State <span style="text-transform:none;letter-spacing:0;font-weight:400;opacity:.6">— powers nearby-competitor scanning. Auto-fills when Google is connected; set manually for customers who haven't.</span></label>
+      <div style="display:flex;gap:8px">
+        <input class="fi" id="el-city" placeholder="City" style="flex:2">
+        <input class="fi" id="el-state" placeholder="State / region" style="flex:1">
+      </div>
+    </div>
     <div class="frow"><label class="fl">Contact / alert email</label><input class="fi" type="email" id="el-contact-email"></div>
     <div class="frow"><label class="fl">Reply tone</label>
       <select class="fsel" id="el-tone">
@@ -1880,6 +1886,8 @@ function openLocationEdit(locId) {
   document.getElementById('el-id').value             = l.id;
   document.getElementById('el-business-name').value  = l.business_name || '';
   document.getElementById('el-contact-email').value  = l.contact_email || '';
+  document.getElementById('el-city').value           = l.city || '';
+  document.getElementById('el-state').value          = l.state || '';
   document.getElementById('el-tone').value           = l.tone || 'warm';
   document.getElementById('el-auto-reply').checked   = !!l.auto_reply;
   document.getElementById('el-active').checked       = l.is_active !== false;
@@ -1901,6 +1909,8 @@ async function saveLocationEdit() {
     businessName:       document.getElementById('el-business-name').value.trim(),
     businessType:       document.getElementById('el-business-type').value,
     contactEmail:       document.getElementById('el-contact-email').value.trim(),
+    city:               document.getElementById('el-city').value.trim(),
+    state:              document.getElementById('el-state').value.trim(),
     tone:               document.getElementById('el-tone').value,
     autoReply:          document.getElementById('el-auto-reply').checked,
     isActive:           document.getElementById('el-active').checked,
