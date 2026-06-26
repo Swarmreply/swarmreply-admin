@@ -302,6 +302,7 @@ tr:hover td{background:#fafaf8}
   <div class="sbi active" onclick="showPage('dashboard')"><span class="sbi-ic">◈</span>Dashboard</div>
   <div class="sbi" onclick="showPage('customers')"><span class="sbi-ic">◉</span>Customers<span class="sb-badge" id="badge-customers">0</span></div>
   <div class="sbi" onclick="showPage('revenue')"><span class="sbi-ic">◈</span>Revenue</div>
+  <div class="sbi" onclick="showPage('analytics');loadAnalytics()"><span class="sbi-ic">▤</span>Analytics</div>
 
   <div class="sb-section">Operations</div>
   <div class="sbi" onclick="showPage('integrations-view')"><span class="sbi-ic">⊕</span>Integrations</div>
@@ -452,6 +453,70 @@ tr:hover td{background:#fafaf8}
             <tr><td colspan="6" style="text-align:center;color:var(--mu);padding:32px">Loading...</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- ══ ANALYTICS ══ -->
+    <div class="page" id="page-analytics">
+      <style>
+        #page-analytics .an-intro{color:var(--mu);font-size:.85rem;margin-bottom:12px;max-width:660px;line-height:1.55}
+        #page-analytics .an-fresh{display:inline-block;font-size:.78rem;font-weight:600;margin-bottom:16px}
+        #page-analytics .an-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px 16px;padding:18px 20px}
+        #page-analytics .an-field{display:flex;flex-direction:column;gap:5px}
+        #page-analytics .an-field label{font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
+        #page-analytics .an-field select{padding:7px 10px;border:1px solid var(--bd);border-radius:8px;background:#fff;font-family:inherit;font-size:.84rem;color:var(--tx);cursor:pointer}
+        #page-analytics .an-field select:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 3px rgba(245,200,66,.18)}
+        #page-analytics .an-toggle{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--tx);padding:0 20px 16px}
+        #page-analytics .an-toggle input{width:15px;height:15px;accent-color:var(--g);cursor:pointer}
+        #page-analytics .an-foot{padding:13px 20px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+        #page-analytics .an-empty{background:var(--of);border:1px dashed var(--bd);border-radius:12px;padding:18px 20px;color:var(--mu);font-size:.85rem;line-height:1.55;margin-top:16px}
+        #page-analytics .an-next{margin-top:16px}
+        #page-analytics .an-next .card-title{color:var(--mu)}
+        #page-analytics .an-next-body{padding:18px 20px;color:var(--mu);font-size:.85rem;line-height:1.6}
+        #page-analytics .an-next-body b{color:var(--tx)}
+      </style>
+
+      <p class="an-intro">Counts and outcomes across the customer base, sliced by the filters below. This is the foundation reports build on — Revenue, retention, and engagement views arrive in the next phases.</p>
+      <div class="an-fresh" id="an-freshness" style="color:#7a7670">Checking snapshot status…</div>
+
+      <!-- Filters -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Filters</div></div>
+        <div class="an-grid">
+          <div class="an-field"><label>Plan</label><select id="an-plan"><option value="all">All</option></select></div>
+          <div class="an-field"><label>Billing status</label><select id="an-status"><option value="all">All</option></select></div>
+          <div class="an-field"><label>Paying</label><select id="an-paying"><option value="all">All</option><option value="true">Paying only</option><option value="false">Non-paying</option></select></div>
+          <div class="an-field"><label>Vertical</label><select id="an-vertical"><option value="all">All</option></select></div>
+          <div class="an-field"><label>Acquisition source</label><select id="an-source"><option value="all">All</option></select></div>
+          <div class="an-field"><label>Integration</label><select id="an-integration"><option value="all">All</option></select></div>
+          <div class="an-field"><label>Activation</label><select id="an-activation"><option value="all">All</option><option value="activated">Activated</option><option value="not">Not activated</option></select></div>
+          <div class="an-field"><label>Tenure</label><select id="an-tenure"><option value="all">All</option><option value="new">New (&lt;30d)</option><option value="established">Established (30&ndash;90d)</option><option value="mature">Mature (90d+)</option></select></div>
+          <div class="an-field"><label>Signup cohort</label><select id="an-cohort"><option value="all">All</option></select></div>
+        </div>
+        <label class="an-toggle"><input type="checkbox" id="an-includeDemo"> Include demo / test accounts</label>
+        <div class="an-foot">
+          <span style="font-size:.78rem;color:var(--mu)">Demo accounts are excluded by default.</span>
+          <button class="btn btn-sm" onclick="resetAnalyticsFilters()">Reset filters</button>
+        </div>
+      </div>
+
+      <!-- Overview -->
+      <div class="stat-row" id="an-stats" style="grid-template-columns:repeat(5,1fr);margin-top:16px">
+        <div class="stat-card gold"><div class="stat-label">Accounts</div><div class="stat-val" id="an-stat-accounts">&mdash;</div><div class="stat-sub">matching filters</div></div>
+        <div class="stat-card green"><div class="stat-label">Active</div><div class="stat-val" id="an-stat-active">&mdash;</div><div class="stat-sub">status active</div></div>
+        <div class="stat-card"><div class="stat-label">Paying</div><div class="stat-val" id="an-stat-paying">&mdash;</div><div class="stat-sub">billable</div></div>
+        <div class="stat-card"><div class="stat-label">With integration</div><div class="stat-val" id="an-stat-withIntegration">&mdash;</div><div class="stat-sub">&ge;1 connected</div></div>
+        <div class="stat-card"><div class="stat-label">Activated</div><div class="stat-val" id="an-stat-activated">&mdash;</div><div class="stat-sub">first request or review</div></div>
+      </div>
+
+      <div class="an-empty" id="an-empty" style="display:none">No snapshots have been captured yet. The first daily snapshot runs tonight at 2:30 AM, after which these counts populate and history starts building. The filter bar above already reads live account data, so your selections are ready when the data lands.</div>
+
+      <!-- What's next -->
+      <div class="card an-next">
+        <div class="card-header"><div class="card-title">Reports land here next</div></div>
+        <div class="an-next-body">
+          This shell and its filters feed the reports coming in the next phases: <b>Revenue &amp; MRR movement</b> and <b>Retention &amp; churn</b> first, then <b>activation</b>, <b>outcomes</b> (requests &rarr; reviews, rating lift), and <b>integration impact</b>. Each one reads the filters above without re-deriving anything.
+        </div>
       </div>
     </div>
 
@@ -1541,7 +1606,7 @@ function applyFilters() {
 // NAVIGATION & UTILS
 // ══════════════════════════════════════════════
 const pageTitles = {
-  dashboard:'Dashboard', customers:'Customers', revenue:'Revenue',
+  dashboard:'Dashboard', customers:'Customers', revenue:'Revenue', analytics:'Analytics',
   'integrations-view':'Integrations', churned:'Churned', flagged:'Flagged for follow-up',
   'audit-log':'Audit log', 'customer-detail':'Customer detail',
 };
@@ -2044,6 +2109,101 @@ function deleteCustomer(id) {
     alert('Deleted: ' + c.name + ' ✓');
     loadAllData();
   }).catch(function(err){ alert('Error: ' + err.message); });
+}
+
+// ── Analytics (P0 shell) ─────────────────────────────────────────────
+const ANALYTICS_FILTERS = ['plan','status','paying','vertical','source','integration','activation','tenure','cohort'];
+let analyticsLoaded = false;
+
+async function loadAnalytics() {
+  if (!analyticsLoaded) {
+    analyticsLoaded = true;
+    const opts = await apiFetch('/admin/analytics/filter-options');
+    if (opts) {
+      fillAnalyticsSelect('an-plan', opts.plans);
+      fillAnalyticsSelect('an-status', opts.statuses);
+      fillAnalyticsSelect('an-vertical', opts.verticals);
+      fillAnalyticsSelect('an-source', opts.sources);
+      fillAnalyticsSelect('an-integration', opts.providers, [['connected','Any connected'],['none','None connected']]);
+      fillAnalyticsSelect('an-cohort', opts.cohorts);
+      renderAnalyticsFreshness(opts.freshness);
+    }
+    ANALYTICS_FILTERS.forEach(function(f){
+      var el = document.getElementById('an-' + f);
+      if (el) el.addEventListener('change', loadAnalyticsOverview);
+    });
+    var demo = document.getElementById('an-includeDemo');
+    if (demo) demo.addEventListener('change', loadAnalyticsOverview);
+  }
+  loadAnalyticsOverview();
+}
+
+function fillAnalyticsSelect(id, values, extraPairs) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var html = '<option value="all">All</option>';
+  (extraPairs || []).forEach(function(p){ html += '<option value="' + esc(p[0]) + '">' + esc(p[1]) + '</option>'; });
+  (values || []).forEach(function(v){ if (v) html += '<option value="' + esc(v) + '">' + esc(v) + '</option>'; });
+  el.innerHTML = html;
+}
+
+function renderAnalyticsFreshness(fr) {
+  var pill = document.getElementById('an-freshness');
+  if (!pill) return;
+  if (fr && fr.hasData && fr.latestSnapshot) {
+    var d = new Date(fr.latestSnapshot);
+    var days = fr.snapshotDays || 0;
+    pill.textContent = 'Data as of ' + d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) + ' \u00b7 ' + days + ' day' + (days === 1 ? '' : 's') + ' captured';
+    pill.style.color = 'var(--gr)';
+  } else {
+    pill.textContent = 'No snapshots captured yet \u2014 the first daily snapshot runs tonight at 2:30 AM';
+    pill.style.color = '#7a7670';
+  }
+}
+
+function analyticsQueryString() {
+  var p = new URLSearchParams();
+  ANALYTICS_FILTERS.forEach(function(f){
+    var el = document.getElementById('an-' + f);
+    if (el && el.value && el.value !== 'all') p.set(f, el.value);
+  });
+  var demo = document.getElementById('an-includeDemo');
+  if (demo && demo.checked) p.set('includeDemo', 'true');
+  return p.toString();
+}
+
+async function loadAnalyticsOverview() {
+  var keys = ['accounts','active','paying','withIntegration','activated'];
+  keys.forEach(function(k){ var el = document.getElementById('an-stat-' + k); if (el) el.textContent = '\u2026'; });
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/overview' + (qs ? '?' + qs : ''));
+  var empty = document.getElementById('an-empty');
+  var stats = document.getElementById('an-stats');
+  if (!data || !data.hasData) {
+    if (empty) empty.style.display = 'block';
+    if (stats) stats.style.opacity = '.4';
+    keys.forEach(function(k){ var el = document.getElementById('an-stat-' + k); if (el) el.textContent = '\u2014'; });
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  if (stats) stats.style.opacity = '1';
+  setAnalyticsStat('accounts', data.accounts);
+  setAnalyticsStat('active', data.active);
+  setAnalyticsStat('paying', data.paying);
+  setAnalyticsStat('withIntegration', data.withIntegration);
+  setAnalyticsStat('activated', data.activated);
+}
+
+function setAnalyticsStat(key, val) {
+  var el = document.getElementById('an-stat-' + key);
+  if (el) el.textContent = Number(val || 0).toLocaleString();
+}
+
+function resetAnalyticsFilters() {
+  ANALYTICS_FILTERS.forEach(function(f){ var el = document.getElementById('an-' + f); if (el) el.value = 'all'; });
+  var demo = document.getElementById('an-includeDemo');
+  if (demo) demo.checked = false;
+  loadAnalyticsOverview();
 }
 
 </script>
