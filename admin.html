@@ -474,6 +474,20 @@ tr:hover td{background:#fafaf8}
         #page-analytics .an-next .card-title{color:var(--mu)}
         #page-analytics .an-next-body{padding:18px 20px;color:var(--mu);font-size:.85rem;line-height:1.6}
         #page-analytics .an-next-body b{color:var(--tx)}
+        #page-analytics .an-rev-label{font-size:.72rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin:24px 0 0}
+        #page-analytics .an-bd-grid{display:grid;grid-template-columns:repeat(3,1fr)}
+        #page-analytics .an-bd{padding:16px 20px;border-right:1px solid var(--bd)}
+        #page-analytics .an-bd:last-child{border-right:none}
+        #page-analytics .an-bd-h{font-size:.72rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px}
+        #page-analytics .an-bd-row{margin-bottom:12px}
+        #page-analytics .an-bd-row:last-child{margin-bottom:0}
+        #page-analytics .an-bd-row-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.83rem}
+        #page-analytics .an-bd-k{color:var(--tx);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        #page-analytics .an-bd-v{color:var(--k);font-weight:700;flex-shrink:0}
+        #page-analytics .an-bd-bar{height:5px;background:var(--of);border-radius:3px;overflow:hidden;margin:5px 0 3px}
+        #page-analytics .an-bd-bar span{display:block;height:100%;background:var(--g);border-radius:3px}
+        #page-analytics .an-bd-sub{font-size:.72rem;color:var(--mu)}
+        #page-analytics .an-bd-empty{color:var(--mu);font-size:.82rem;padding:4px 0}
       </style>
 
       <p class="an-intro">Counts and outcomes across the customer base, sliced by the filters below. This is the foundation reports build on — Revenue, retention, and engagement views arrive in the next phases.</p>
@@ -510,6 +524,26 @@ tr:hover td{background:#fafaf8}
       </div>
 
       <div class="an-empty" id="an-empty" style="display:none">No snapshots have been captured yet. The first daily snapshot runs tonight at 2:30 AM, after which these counts populate and history starts building. The filter bar above already reads live account data, so your selections are ready when the data lands.</div>
+
+      <!-- Revenue (P1 Part 1) -->
+      <div class="an-rev-label">Revenue</div>
+      <div class="stat-row" id="an-rev-stats" style="grid-template-columns:repeat(4,1fr);margin-top:10px">
+        <div class="stat-card gold"><div class="stat-label">MRR</div><div class="stat-val" id="an-rev-mrr">&mdash;</div><div class="stat-sub">monthly recurring</div></div>
+        <div class="stat-card"><div class="stat-label">ARR</div><div class="stat-val" id="an-rev-arr">&mdash;</div><div class="stat-sub">annual run rate</div></div>
+        <div class="stat-card"><div class="stat-label">ARPU</div><div class="stat-val" id="an-rev-arpu">&mdash;</div><div class="stat-sub">per revenue account</div></div>
+        <div class="stat-card green"><div class="stat-label">Revenue accounts</div><div class="stat-val" id="an-rev-accts">&mdash;</div><div class="stat-sub">paying &gt; $0</div></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div class="card-title">MRR breakdown</div>
+          <button class="btn btn-sm" onclick="exportAnalyticsRevenueCsv()">Export CSV</button>
+        </div>
+        <div class="an-bd-grid">
+          <div class="an-bd"><div class="an-bd-h">By plan</div><div id="an-bd-plan"><div class="an-bd-empty">&mdash;</div></div></div>
+          <div class="an-bd"><div class="an-bd-h">By vertical</div><div id="an-bd-vertical"><div class="an-bd-empty">&mdash;</div></div></div>
+          <div class="an-bd"><div class="an-bd-h">By acquisition source</div><div id="an-bd-source"><div class="an-bd-empty">&mdash;</div></div></div>
+        </div>
+      </div>
 
       <!-- What's next -->
       <div class="card an-next">
@@ -2130,12 +2164,17 @@ async function loadAnalytics() {
     }
     ANALYTICS_FILTERS.forEach(function(f){
       var el = document.getElementById('an-' + f);
-      if (el) el.addEventListener('change', loadAnalyticsOverview);
+      if (el) el.addEventListener('change', refreshAnalytics);
     });
     var demo = document.getElementById('an-includeDemo');
-    if (demo) demo.addEventListener('change', loadAnalyticsOverview);
+    if (demo) demo.addEventListener('change', refreshAnalytics);
   }
+  refreshAnalytics();
+}
+
+function refreshAnalytics() {
   loadAnalyticsOverview();
+  loadAnalyticsRevenue();
 }
 
 function fillAnalyticsSelect(id, values, extraPairs) {
@@ -2203,7 +2242,62 @@ function resetAnalyticsFilters() {
   ANALYTICS_FILTERS.forEach(function(f){ var el = document.getElementById('an-' + f); if (el) el.value = 'all'; });
   var demo = document.getElementById('an-includeDemo');
   if (demo) demo.checked = false;
-  loadAnalyticsOverview();
+  refreshAnalytics();
+}
+
+// ── Analytics revenue (P1 Part 1) ────────────────────────────────────
+function fmtMoney(n) { return '$' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+
+async function loadAnalyticsRevenue() {
+  var cards = ['mrr','arr','arpu','accts'];
+  cards.forEach(function(k){ var el = document.getElementById('an-rev-' + k); if (el) el.textContent = '\u2026'; });
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/revenue' + (qs ? '?' + qs : ''));
+  if (!data || !data.hasData) {
+    cards.forEach(function(k){ var el = document.getElementById('an-rev-' + k); if (el) el.textContent = '\u2014'; });
+    renderRevenueBreakdown('an-bd-plan', []);
+    renderRevenueBreakdown('an-bd-vertical', []);
+    renderRevenueBreakdown('an-bd-source', []);
+    return;
+  }
+  document.getElementById('an-rev-mrr').textContent   = fmtMoney(data.mrr);
+  document.getElementById('an-rev-arr').textContent   = fmtMoney(data.arr);
+  document.getElementById('an-rev-arpu').textContent  = fmtMoney(data.arpu);
+  document.getElementById('an-rev-accts').textContent = Number(data.revenueAccounts || 0).toLocaleString();
+  renderRevenueBreakdown('an-bd-plan', data.byPlan);
+  renderRevenueBreakdown('an-bd-vertical', data.byVertical);
+  renderRevenueBreakdown('an-bd-source', data.bySource);
+}
+
+function renderRevenueBreakdown(id, rows) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (!rows || !rows.length) { el.innerHTML = '<div class="an-bd-empty">\u2014</div>'; return; }
+  var max = Math.max.apply(null, rows.map(function(r){ return r.mrr; }).concat([1]));
+  el.innerHTML = rows.map(function(r){
+    var pct = max > 0 ? Math.round((r.mrr / max) * 100) : 0;
+    return '<div class="an-bd-row">' +
+             '<div class="an-bd-row-top"><span class="an-bd-k">' + esc(r.key) + '</span><span class="an-bd-v">' + fmtMoney(r.mrr) + '</span></div>' +
+             '<div class="an-bd-bar"><span style="width:' + pct + '%"></span></div>' +
+             '<div class="an-bd-sub">' + r.accounts + ' acct' + (r.accounts === 1 ? '' : 's') + '</div>' +
+           '</div>';
+  }).join('');
+}
+
+function exportAnalyticsRevenueCsv() {
+  var qs = analyticsQueryString();
+  var url = API + '/admin/analytics/revenue?format=csv' + (qs ? '&' + qs : '');
+  fetch(url, { headers: { 'Authorization': 'Bearer ' + state.token } })
+    .then(function(r){ return r.ok ? r.blob() : null; })
+    .then(function(blob){
+      if (!blob) { alert('Export failed — no data yet, or session expired.'); return; }
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'swarmreply-revenue.csv';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    })
+    .catch(function(){ alert('Export failed.'); });
 }
 
 </script>
