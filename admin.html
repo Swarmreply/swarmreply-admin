@@ -645,11 +645,44 @@ tr:hover td{background:#fafaf8}
         <div class="stat-card"><div class="stat-label">Average rating</div><div class="stat-val" id="an-out-rating">&mdash;</div><div class="stat-sub">across reviews on file</div></div>
       </div>
 
+      <!-- Feature adoption (P2 Part 2) -->
+      <div class="an-rev-label" style="margin-top:26px">Feature adoption</div>
+      <div class="an-empty" id="an-feat-note" style="display:none;margin-top:10px">No snapshot data yet.</div>
+      <div class="card" id="an-feat-card" style="margin-top:10px">
+        <div class="card-header"><div class="card-title">Adoption by feature</div></div>
+        <div class="an-fn" id="an-features"><div class="an-bd-empty">&mdash;</div></div>
+      </div>
+      <div class="card" id="an-breadth-card" style="margin-top:16px">
+        <div class="card-header"><div class="card-title">Feature breadth <span id="an-breadth-avg" style="color:var(--mu);font-weight:600;font-size:.82rem;margin-left:8px"></span></div></div>
+        <div class="an-fn" id="an-breadth"><div class="an-bd-empty">&mdash;</div></div>
+      </div>
+
+      <!-- Integration adoption & impact (P2 Part 2) -->
+      <div class="an-mv-head">
+        <span class="an-rev-label" style="margin:0">Integration adoption &amp; impact</span>
+        <button class="btn btn-sm" onclick="exportAnalyticsIntegrationsCsv()">Export CSV</button>
+      </div>
+      <div class="an-empty" id="an-int-note" style="display:none;margin-top:10px">No snapshot data yet.</div>
+      <div id="an-int-body">
+        <div class="card" style="margin-top:10px">
+          <div class="card-header"><div class="card-title">Connected providers <span id="an-int-summary" style="color:var(--mu);font-weight:600;font-size:.82rem;margin-left:8px"></span></div></div>
+          <div class="an-fn" id="an-providers"><div class="an-bd-empty">No integrations connected yet.</div></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><div class="card-title">Outcome comparison: with vs without an integration</div></div>
+          <table>
+            <thead><tr><th>Metric</th><th>With integration</th><th>Without integration</th></tr></thead>
+            <tbody id="an-impact-tbody"><tr><td colspan="3" style="text-align:center;color:var(--mu);padding:24px">&mdash;</td></tr></tbody>
+          </table>
+          <div style="padding:12px 20px;border-top:1px solid var(--bd);font-size:.78rem;color:var(--mu);line-height:1.5">A correlation, not proof of cause &mdash; and small account counts make it noisy. It sharpens as the base grows.</div>
+        </div>
+      </div>
+
       <!-- What's next -->
       <div class="card an-next" style="margin-top:16px">
         <div class="card-header"><div class="card-title">Reports land here next</div></div>
         <div class="an-next-body">
-          Activation and outcomes are live above. Next (Phase 2 Part 2): <b>feature adoption &amp; breadth</b> and <b>integration adoption &amp; impact</b> &mdash; including whether accounts with an integration connected produce more requests and reviews, which is where the Jobber-wedge thesis gets measured directly.
+          Phase 2 is complete: activation, outcomes, feature adoption, and integration impact are all live above. Next (Phase 3): <b>messaging deliverability &amp; opt-outs</b> (the A2P / TCPA canary), a <b>customer health scoreboard</b>, and <b>expansion &amp; plan-limit signals</b>.
         </div>
       </div>
     </div>
@@ -2279,6 +2312,8 @@ function refreshAnalytics() {
   loadAnalyticsCohorts();
   loadAnalyticsActivation();
   loadAnalyticsOutcomes();
+  loadAnalyticsFeatures();
+  loadAnalyticsIntegrations();
 }
 
 function fillAnalyticsSelect(id, values, extraPairs) {
@@ -2549,6 +2584,84 @@ async function loadAnalyticsOutcomes() {
   document.getElementById('an-out-reviews').textContent = Number(data.reviews).toLocaleString();
   document.getElementById('an-out-reviewsc').textContent = data.reviewsPerRequest === null ? '\u00a0' : (Math.round(data.reviewsPerRequest * 100) / 100) + ' per request';
   document.getElementById('an-out-rating').textContent = data.avgRating ? data.avgRating.toFixed(2) + ' \u2605' : '\u2014';
+}
+
+// ── Analytics feature adoption & integration impact (P2 Part 2) ──────
+function renderFnBars(rows, total) {
+  if (!rows || !rows.length) return '<div class="an-bd-empty">\u2014</div>';
+  return rows.map(function(f){
+    var pct = total > 0 ? Math.round(f.count / total * 100) : 0;
+    return '<div class="an-fn-row">' +
+             '<div class="an-fn-top"><span class="an-fn-label">' + esc(f.label) + '</span>' +
+             '<span class="an-fn-val">' + f.count.toLocaleString() + '<span>' + pct + '%</span></span></div>' +
+             '<div class="an-fn-bar"><span style="width:' + pct + '%"></span></div>' +
+           '</div>';
+  }).join('');
+}
+
+async function loadAnalyticsFeatures() {
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/features' + (qs ? '?' + qs : ''));
+  var note = document.getElementById('an-feat-note');
+  var card = document.getElementById('an-feat-card');
+  var bcard = document.getElementById('an-breadth-card');
+  if (!data || !data.hasData) {
+    if (note) note.style.display = 'block';
+    if (card) card.style.display = 'none';
+    if (bcard) bcard.style.display = 'none';
+    return;
+  }
+  note.style.display = 'none'; card.style.display = 'block'; bcard.style.display = 'block';
+  var total = data.total || 0;
+  document.getElementById('an-features').innerHTML = renderFnBars(data.features, total);
+  document.getElementById('an-breadth').innerHTML = renderFnBars(data.breadth, total);
+  document.getElementById('an-breadth-avg').textContent = total > 0 ? ('avg ' + data.avgBreadth + ' of 5') : '';
+}
+
+function providerLabel(p) {
+  var m = { google: 'Google Business Profile', jobber: 'Jobber', housecall: 'Housecall Pro', housecallpro: 'Housecall Pro', facebook: 'Facebook', meta: 'Meta', quickbooks: 'QuickBooks', qbo: 'QuickBooks', zapier: 'Zapier', make: 'Make' };
+  var k = (p || '').toLowerCase();
+  return m[k] || (p ? p.charAt(0).toUpperCase() + p.slice(1) : p);
+}
+
+async function loadAnalyticsIntegrations() {
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/integrations' + (qs ? '?' + qs : ''));
+  var note = document.getElementById('an-int-note');
+  var body = document.getElementById('an-int-body');
+  if (!data || !data.hasData) {
+    if (note) note.style.display = 'block';
+    if (body) body.style.display = 'none';
+    return;
+  }
+  note.style.display = 'none'; body.style.display = 'block';
+  var total = data.total || 0;
+  document.getElementById('an-int-summary').textContent = total > 0
+    ? (data.withAny.toLocaleString() + ' of ' + total.toLocaleString() + ' accounts (' + (data.withAnyRate === null ? '0' : Math.round(data.withAnyRate * 100)) + '%)')
+    : '';
+  var prov = document.getElementById('an-providers');
+  if (!data.providers || !data.providers.length) {
+    prov.innerHTML = '<div class="an-bd-empty">No integrations connected yet.</div>';
+  } else {
+    var labeled = data.providers.map(function(p){ return { label: providerLabel(p.provider), count: p.accounts }; });
+    prov.innerHTML = renderFnBars(labeled, total);
+  }
+  var w = data.impact.withInt, wo = data.impact.withoutInt;
+  var pctv = function(v){ return v === null ? '\u2014' : Math.round(v * 100) + '%'; };
+  var rows = [
+    ['Accounts', w.accounts.toLocaleString(), wo.accounts.toLocaleString()],
+    ['Avg requests / account', w.avgRequests, wo.avgRequests],
+    ['Avg reviews / account', w.avgReviews, wo.avgReviews],
+    ['Activation rate', pctv(w.activationRate), pctv(wo.activationRate)],
+    ['Avg rating', w.avgRating ? w.avgRating.toFixed(2) : '\u2014', wo.avgRating ? wo.avgRating.toFixed(2) : '\u2014'],
+  ];
+  document.getElementById('an-impact-tbody').innerHTML = rows.map(function(r){
+    return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td></tr>';
+  }).join('');
+}
+
+function exportAnalyticsIntegrationsCsv() {
+  downloadAnalyticsCsv('/admin/analytics/integrations?format=csv', 'swarmreply-integrations.csv');
 }
 
 </script>
