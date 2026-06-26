@@ -488,6 +488,20 @@ tr:hover td{background:#fafaf8}
         #page-analytics .an-bd-bar span{display:block;height:100%;background:var(--g);border-radius:3px}
         #page-analytics .an-bd-sub{font-size:.72rem;color:var(--mu)}
         #page-analytics .an-bd-empty{color:var(--mu);font-size:.82rem;padding:4px 0}
+        #page-analytics .an-mv-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:24px 0 0;flex-wrap:wrap}
+        #page-analytics .an-mv-head select{padding:5px 9px;border:1px solid var(--bd);border-radius:7px;background:#fff;font-family:inherit;font-size:.8rem;color:var(--tx);cursor:pointer}
+        #page-analytics .an-mv-bridge{display:flex;align-items:center;gap:20px;padding:18px 20px;flex-wrap:wrap}
+        #page-analytics .an-mv-cell{display:flex;flex-direction:column;gap:2px}
+        #page-analytics .an-mv-cap{font-size:.7rem;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
+        #page-analytics .an-mv-fig{font-size:1.45rem;font-weight:800;color:var(--k);font-variant-numeric:tabular-nums}
+        #page-analytics .an-mv-fig.pos{color:var(--gr)}
+        #page-analytics .an-mv-fig.neg{color:var(--re)}
+        #page-analytics .an-mv-date{font-size:.7rem;color:var(--mu)}
+        #page-analytics .an-mv-arrow{font-size:1.3rem;color:var(--mu)}
+        #page-analytics .an-mv-track{display:flex;height:8px;border-top:1px solid var(--bd)}
+        #page-analytics .an-mv-track span{display:block;height:8px}
+        #page-analytics .stat-val.pos{color:var(--gr)}
+        #page-analytics .stat-val.neg{color:var(--re)}
       </style>
 
       <p class="an-intro">Counts and outcomes across the customer base, sliced by the filters below. This is the foundation reports build on — Revenue, retention, and engagement views arrive in the next phases.</p>
@@ -545,11 +559,68 @@ tr:hover td{background:#fafaf8}
         </div>
       </div>
 
+      <!-- MRR movement & retention (P1 Part 2) -->
+      <div class="an-mv-head">
+        <span class="an-rev-label" style="margin:0">MRR movement &amp; retention</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="an-period" onchange="loadAnalyticsMovement()">
+            <option value="7d">Last 7 days</option>
+            <option value="30d" selected>Last 30 days</option>
+            <option value="90d">Last 90 days</option>
+            <option value="mtd">Month to date</option>
+            <option value="qtd">Quarter to date</option>
+            <option value="all">All time</option>
+          </select>
+          <button class="btn btn-sm" onclick="exportAnalyticsMovementCsv()">Export CSV</button>
+        </div>
+      </div>
+
+      <div class="an-empty" id="an-mv-note" style="display:none;margin-top:10px"></div>
+
+      <div id="an-mv-body">
+        <div class="card" style="margin-top:10px">
+          <div class="an-mv-bridge">
+            <div class="an-mv-cell"><span class="an-mv-cap">Starting MRR</span><span class="an-mv-fig" id="an-mv-start">&mdash;</span><span class="an-mv-date" id="an-mv-sdate"></span></div>
+            <div class="an-mv-arrow">&rarr;</div>
+            <div class="an-mv-cell"><span class="an-mv-cap">Ending MRR</span><span class="an-mv-fig" id="an-mv-end">&mdash;</span><span class="an-mv-date" id="an-mv-edate"></span></div>
+            <div class="an-mv-cell an-mv-net" style="margin-left:auto"><span class="an-mv-cap">Net change</span><span class="an-mv-fig" id="an-mv-net">&mdash;</span></div>
+          </div>
+          <div class="an-mv-track" id="an-mv-track"></div>
+        </div>
+
+        <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-top:16px">
+          <div class="stat-card"><div class="stat-label">New</div><div class="stat-val pos" id="an-mv-new">&mdash;</div><div class="stat-sub" id="an-mv-newc">&nbsp;</div></div>
+          <div class="stat-card"><div class="stat-label">Expansion</div><div class="stat-val pos" id="an-mv-exp">&mdash;</div><div class="stat-sub" id="an-mv-expc">&nbsp;</div></div>
+          <div class="stat-card"><div class="stat-label">Contraction</div><div class="stat-val neg" id="an-mv-con">&mdash;</div><div class="stat-sub" id="an-mv-conc">&nbsp;</div></div>
+          <div class="stat-card"><div class="stat-label">Churn</div><div class="stat-val neg" id="an-mv-chu">&mdash;</div><div class="stat-sub" id="an-mv-chuc">&nbsp;</div></div>
+        </div>
+
+        <div class="an-rev-label">Retention</div>
+        <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-top:10px">
+          <div class="stat-card gold"><div class="stat-label">Net revenue retention</div><div class="stat-val" id="an-rt-nrr">&mdash;</div><div class="stat-sub">NRR</div></div>
+          <div class="stat-card"><div class="stat-label">Gross revenue retention</div><div class="stat-val" id="an-rt-grr">&mdash;</div><div class="stat-sub">GRR</div></div>
+          <div class="stat-card"><div class="stat-label">Logo retention</div><div class="stat-val" id="an-rt-logo">&mdash;</div><div class="stat-sub">accounts kept</div></div>
+          <div class="stat-card"><div class="stat-label">Net MRR churn</div><div class="stat-val" id="an-rt-netchurn">&mdash;</div><div class="stat-sub">lower is better</div></div>
+        </div>
+      </div>
+
+      <!-- Cohorts -->
+      <div class="an-mv-head">
+        <span class="an-rev-label" style="margin:0">Cohorts (by signup month)</span>
+        <button class="btn btn-sm" onclick="exportAnalyticsCohortsCsv()">Export CSV</button>
+      </div>
+      <div class="card" style="margin-top:10px">
+        <table>
+          <thead><tr><th>Signup month</th><th>Accounts</th><th>Paying</th><th>% paying</th><th>MRR</th></tr></thead>
+          <tbody id="an-cohorts-tbody"><tr><td colspan="5" style="text-align:center;color:var(--mu);padding:24px">&mdash;</td></tr></tbody>
+        </table>
+      </div>
+
       <!-- What's next -->
       <div class="card an-next">
         <div class="card-header"><div class="card-title">Reports land here next</div></div>
         <div class="an-next-body">
-          This shell and its filters feed the reports coming in the next phases: <b>Revenue &amp; MRR movement</b> and <b>Retention &amp; churn</b> first, then <b>activation</b>, <b>outcomes</b> (requests &rarr; reviews, rating lift), and <b>integration impact</b>. Each one reads the filters above without re-deriving anything.
+          Revenue, MRR movement, and retention are live above. Next: <b>activation</b> (signup &rarr; first request &rarr; first review), <b>outcomes</b> (requests &rarr; reviews, rating lift), <b>feature adoption</b>, and <b>integration impact</b> &mdash; each reading the same filters.
         </div>
       </div>
     </div>
@@ -2175,6 +2246,8 @@ async function loadAnalytics() {
 function refreshAnalytics() {
   loadAnalyticsOverview();
   loadAnalyticsRevenue();
+  loadAnalyticsMovement();
+  loadAnalyticsCohorts();
 }
 
 function fillAnalyticsSelect(id, values, extraPairs) {
@@ -2298,6 +2371,99 @@ function exportAnalyticsRevenueCsv() {
       setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
     })
     .catch(function(){ alert('Export failed.'); });
+}
+
+// ── Analytics movement, retention & cohorts (P1 Part 2) ───────────────
+function fmtPct(v) { return (v === null || v === undefined) ? '\u2014' : (v * 100).toFixed(0) + '%'; }
+
+async function loadAnalyticsMovement() {
+  var period = (document.getElementById('an-period') || {}).value || '30d';
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/movement?period=' + encodeURIComponent(period) + (qs ? '&' + qs : ''));
+  var note = document.getElementById('an-mv-note');
+  var body = document.getElementById('an-mv-body');
+  if (!note || !body) return;
+  if (!data || !data.hasData) {
+    body.style.display = 'none';
+    note.style.display = 'block';
+    if (!data || data.reason === 'no_snapshots') {
+      note.textContent = 'No snapshots captured yet. Movement and retention compare two snapshots — the first one runs tonight.';
+    } else if (data.reason === 'insufficient_history') {
+      var ear = data.earliest ? new Date(data.earliest).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'recently';
+      note.textContent = 'Not enough history for this period yet. Snapshots start from ' + ear + ' — pick a shorter period, or check back as more days accrue.';
+    } else {
+      note.textContent = 'Movement is unavailable right now.';
+    }
+    return;
+  }
+  note.style.display = 'none';
+  body.style.display = 'block';
+  var dfmt = function(s){ return new Date(s).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); };
+  document.getElementById('an-mv-start').textContent = fmtMoney(data.startMrr);
+  document.getElementById('an-mv-end').textContent   = fmtMoney(data.endMrr);
+  document.getElementById('an-mv-sdate').textContent = 'as of ' + dfmt(data.start);
+  document.getElementById('an-mv-edate').textContent = 'as of ' + dfmt(data.end);
+  var net = document.getElementById('an-mv-net');
+  net.textContent = (data.net >= 0 ? '+' : '\u2212') + fmtMoney(Math.abs(data.net));
+  net.className = 'an-mv-fig ' + (data.net >= 0 ? 'pos' : 'neg');
+  setMv('new', data.new, data.counts.new, false);
+  setMv('exp', data.expansion, data.counts.expansion, false);
+  setMv('con', data.contraction, data.counts.contraction, true);
+  setMv('chu', data.churned, data.counts.churned, true);
+  var segs = [['New', data.new, '#1a6b45'], ['Expansion', data.expansion, '#3fa86f'], ['Contraction', data.contraction, '#e0846f'], ['Churn', data.churned, '#c0392b']];
+  var tot = segs.reduce(function(s, x){ return s + Math.abs(x[1]); }, 0) || 1;
+  document.getElementById('an-mv-track').innerHTML = segs.map(function(x){
+    var w = Math.abs(x[1]) / tot * 100;
+    return w > 0 ? '<span style="width:' + w + '%;background:' + x[2] + '" title="' + x[0] + '"></span>' : '';
+  }).join('');
+  document.getElementById('an-rt-nrr').textContent      = fmtPct(data.retention.nrr);
+  document.getElementById('an-rt-grr').textContent      = fmtPct(data.retention.grr);
+  document.getElementById('an-rt-logo').textContent     = fmtPct(data.retention.logoRetention);
+  document.getElementById('an-rt-netchurn').textContent = fmtPct(data.retention.netChurn);
+}
+
+function setMv(key, val, count, negative) {
+  var v = document.getElementById('an-mv-' + key);
+  if (v) v.textContent = (val > 0 ? (negative ? '\u2212' : '+') : '') + fmtMoney(val);
+  var c = document.getElementById('an-mv-' + key + 'c');
+  if (c) c.textContent = count + ' acct' + (count === 1 ? '' : 's');
+}
+
+async function loadAnalyticsCohorts() {
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/cohorts' + (qs ? '?' + qs : ''));
+  var tb = document.getElementById('an-cohorts-tbody');
+  if (!tb) return;
+  if (!data || !data.hasData || !data.cohorts || !data.cohorts.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--mu);padding:24px">No snapshot data yet.</td></tr>';
+    return;
+  }
+  tb.innerHTML = data.cohorts.map(function(c){
+    var pct = c.accounts > 0 ? Math.round(c.paying / c.accounts * 100) : 0;
+    return '<tr><td>' + esc(c.cohort) + '</td><td>' + c.accounts + '</td><td>' + c.paying + '</td><td>' + pct + '%</td><td>' + fmtMoney(c.mrr) + '</td></tr>';
+  }).join('');
+}
+
+function downloadAnalyticsCsv(path, filename) {
+  var qs = analyticsQueryString();
+  var url = API + path + (qs ? '&' + qs : '');
+  fetch(url, { headers: { 'Authorization': 'Bearer ' + state.token } })
+    .then(function(r){ return r.ok ? r.blob() : null; })
+    .then(function(blob){
+      if (!blob) { alert('Export failed — no data yet, or session expired.'); return; }
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    })
+    .catch(function(){ alert('Export failed.'); });
+}
+function exportAnalyticsMovementCsv() {
+  var period = (document.getElementById('an-period') || {}).value || '30d';
+  downloadAnalyticsCsv('/admin/analytics/movement?format=csv&period=' + encodeURIComponent(period), 'swarmreply-mrr-movement.csv');
+}
+function exportAnalyticsCohortsCsv() {
+  downloadAnalyticsCsv('/admin/analytics/cohorts?format=csv', 'swarmreply-cohorts.csv');
 }
 
 </script>
