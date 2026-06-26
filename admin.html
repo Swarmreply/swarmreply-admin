@@ -502,6 +502,15 @@ tr:hover td{background:#fafaf8}
         #page-analytics .an-mv-track span{display:block;height:8px}
         #page-analytics .stat-val.pos{color:var(--gr)}
         #page-analytics .stat-val.neg{color:var(--re)}
+        #page-analytics .an-fn{padding:18px 20px}
+        #page-analytics .an-fn-row{margin-bottom:14px}
+        #page-analytics .an-fn-row:last-child{margin-bottom:0}
+        #page-analytics .an-fn-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.84rem;margin-bottom:5px}
+        #page-analytics .an-fn-label{color:var(--tx);font-weight:600}
+        #page-analytics .an-fn-val{color:var(--k);font-weight:700;font-variant-numeric:tabular-nums}
+        #page-analytics .an-fn-val span{color:var(--mu);font-weight:600;font-size:.78rem;margin-left:6px}
+        #page-analytics .an-fn-bar{height:22px;background:var(--of);border-radius:6px;overflow:hidden}
+        #page-analytics .an-fn-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--g),var(--gd));border-radius:6px}
       </style>
 
       <p class="an-intro">Counts and outcomes across the customer base, sliced by the filters below. This is the foundation reports build on — Revenue, retention, and engagement views arrive in the next phases.</p>
@@ -616,11 +625,31 @@ tr:hover td{background:#fafaf8}
         </table>
       </div>
 
+      <!-- Engagement: Activation + Outcomes (P2 Part 1) -->
+      <div class="an-rev-label" id="an-sec-engagement" style="margin-top:26px">Activation</div>
+      <div class="an-empty" id="an-act-note" style="display:none;margin-top:10px">No snapshot data yet.</div>
+      <div class="card" id="an-act-card" style="margin-top:10px">
+        <div class="card-header"><div class="card-title">Activation milestones</div></div>
+        <div class="an-fn" id="an-funnel"><div class="an-bd-empty">&mdash;</div></div>
+      </div>
+      <div class="stat-row" style="grid-template-columns:repeat(2,1fr);margin-top:16px">
+        <div class="stat-card gold"><div class="stat-label">Median time to first request</div><div class="stat-val" id="an-ttv-req">&mdash;</div><div class="stat-sub" id="an-ttv-reqc">&nbsp;</div></div>
+        <div class="stat-card"><div class="stat-label">Median time to first review</div><div class="stat-val" id="an-ttv-rev">&mdash;</div><div class="stat-sub" id="an-ttv-revc">&nbsp;</div></div>
+      </div>
+
+      <div class="an-rev-label">Outcomes</div>
+      <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-top:10px">
+        <div class="stat-card gold"><div class="stat-label">Review requests sent</div><div class="stat-val" id="an-out-sent">&mdash;</div><div class="stat-sub" id="an-out-sentc">&nbsp;</div></div>
+        <div class="stat-card"><div class="stat-label">Requests completed</div><div class="stat-val" id="an-out-completed">&mdash;</div><div class="stat-sub" id="an-out-completedc">&nbsp;</div></div>
+        <div class="stat-card green"><div class="stat-label">Reviews collected</div><div class="stat-val" id="an-out-reviews">&mdash;</div><div class="stat-sub" id="an-out-reviewsc">&nbsp;</div></div>
+        <div class="stat-card"><div class="stat-label">Average rating</div><div class="stat-val" id="an-out-rating">&mdash;</div><div class="stat-sub">across reviews on file</div></div>
+      </div>
+
       <!-- What's next -->
-      <div class="card an-next">
+      <div class="card an-next" style="margin-top:16px">
         <div class="card-header"><div class="card-title">Reports land here next</div></div>
         <div class="an-next-body">
-          Revenue, MRR movement, and retention are live above. Next: <b>activation</b> (signup &rarr; first request &rarr; first review), <b>outcomes</b> (requests &rarr; reviews, rating lift), <b>feature adoption</b>, and <b>integration impact</b> &mdash; each reading the same filters.
+          Activation and outcomes are live above. Next (Phase 2 Part 2): <b>feature adoption &amp; breadth</b> and <b>integration adoption &amp; impact</b> &mdash; including whether accounts with an integration connected produce more requests and reviews, which is where the Jobber-wedge thesis gets measured directly.
         </div>
       </div>
     </div>
@@ -2248,6 +2277,8 @@ function refreshAnalytics() {
   loadAnalyticsRevenue();
   loadAnalyticsMovement();
   loadAnalyticsCohorts();
+  loadAnalyticsActivation();
+  loadAnalyticsOutcomes();
 }
 
 function fillAnalyticsSelect(id, values, extraPairs) {
@@ -2464,6 +2495,60 @@ function exportAnalyticsMovementCsv() {
 }
 function exportAnalyticsCohortsCsv() {
   downloadAnalyticsCsv('/admin/analytics/cohorts?format=csv', 'swarmreply-cohorts.csv');
+}
+
+// ── Analytics activation & outcomes (P2 Part 1) ──────────────────────
+function fmtDays(d) { var n = Math.round(d * 10) / 10; return n + ' day' + (n === 1 ? '' : 's'); }
+
+async function loadAnalyticsActivation() {
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/activation' + (qs ? '?' + qs : ''));
+  var note = document.getElementById('an-act-note');
+  var card = document.getElementById('an-act-card');
+  var ttvReq = document.getElementById('an-ttv-req'), ttvRev = document.getElementById('an-ttv-rev');
+  if (!data || !data.hasData) {
+    if (note) note.style.display = 'block';
+    if (card) card.style.display = 'none';
+    if (ttvReq) ttvReq.textContent = '\u2014';
+    if (ttvRev) ttvRev.textContent = '\u2014';
+    document.getElementById('an-ttv-reqc').textContent = '\u00a0';
+    document.getElementById('an-ttv-revc').textContent = '\u00a0';
+    return;
+  }
+  if (note) note.style.display = 'none';
+  if (card) card.style.display = 'block';
+  var total = data.total || 0;
+  document.getElementById('an-funnel').innerHTML = data.funnel.map(function(f){
+    var pct = total > 0 ? Math.round(f.count / total * 100) : 0;
+    return '<div class="an-fn-row">' +
+             '<div class="an-fn-top"><span class="an-fn-label">' + esc(f.label) + '</span>' +
+             '<span class="an-fn-val">' + f.count.toLocaleString() + '<span>' + pct + '%</span></span></div>' +
+             '<div class="an-fn-bar"><span style="width:' + pct + '%"></span></div>' +
+           '</div>';
+  }).join('');
+  var t = data.ttv;
+  ttvReq.textContent = t.firstRequestMedianDays === null ? '\u2014' : fmtDays(t.firstRequestMedianDays);
+  document.getElementById('an-ttv-reqc').textContent = t.reachedRequest + ' account' + (t.reachedRequest === 1 ? '' : 's') + ' reached';
+  ttvRev.textContent = t.firstReviewMedianDays === null ? '\u2014' : fmtDays(t.firstReviewMedianDays);
+  document.getElementById('an-ttv-revc').textContent = t.reachedReview + ' account' + (t.reachedReview === 1 ? '' : 's') + ' reached';
+}
+
+async function loadAnalyticsOutcomes() {
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/outcomes' + (qs ? '?' + qs : ''));
+  var ids = ['sent','completed','reviews','rating'];
+  if (!data || !data.hasData) {
+    ids.forEach(function(k){ var el = document.getElementById('an-out-' + k); if (el) el.textContent = '\u2014'; });
+    ['sentc','completedc','reviewsc'].forEach(function(k){ var el = document.getElementById('an-out-' + k); if (el) el.textContent = '\u00a0'; });
+    return;
+  }
+  document.getElementById('an-out-sent').textContent = Number(data.requestsSent).toLocaleString();
+  document.getElementById('an-out-sentc').textContent = data.accountsWithRequests + ' account' + (data.accountsWithRequests === 1 ? '' : 's') + ' sending';
+  document.getElementById('an-out-completed').textContent = Number(data.requestsCompleted).toLocaleString();
+  document.getElementById('an-out-completedc').textContent = data.completionRate === null ? '\u00a0' : Math.round(data.completionRate * 100) + '% completion';
+  document.getElementById('an-out-reviews').textContent = Number(data.reviews).toLocaleString();
+  document.getElementById('an-out-reviewsc').textContent = data.reviewsPerRequest === null ? '\u00a0' : (Math.round(data.reviewsPerRequest * 100) / 100) + ' per request';
+  document.getElementById('an-out-rating').textContent = data.avgRating ? data.avgRating.toFixed(2) + ' \u2605' : '\u2014';
 }
 
 </script>
