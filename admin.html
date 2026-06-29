@@ -517,6 +517,10 @@ tr:hover td{background:#fafaf8}
         #page-analytics .an-spark .sbar{flex:1 1 auto;max-width:30px;background:var(--g);border-radius:3px 3px 0 0;min-height:3px}
         #page-analytics .an-spark .sbar.hi{background:var(--re)}
         #page-analytics .an-spark-cap{padding:0 20px 16px;font-size:.75rem;color:var(--mu)}
+        #page-analytics .hbadge{display:inline-block;padding:2px 9px;border-radius:11px;font-size:.72rem;font-weight:600;text-transform:capitalize}
+        #page-analytics .hbadge.green{background:rgba(26,107,69,.12);color:var(--gr)}
+        #page-analytics .hbadge.yellow{background:rgba(212,165,21,.18);color:var(--gd)}
+        #page-analytics .hbadge.red{background:rgba(192,57,43,.12);color:var(--re)}
       </style>
 
       <p class="an-intro">Counts and outcomes across the customer base, sliced by the filters below. This is the foundation reports build on — Revenue, retention, and engagement views arrive in the next phases.</p>
@@ -707,11 +711,60 @@ tr:hover td{background:#fafaf8}
         </div>
       </div>
 
+      <!-- Customer health scoreboard (P3 Part 2) -->
+      <div class="an-mv-head">
+        <span class="an-rev-label" style="margin:0">Customer health</span>
+        <button class="btn btn-sm" onclick="exportAnalyticsHealthCsv()">Export CSV</button>
+      </div>
+      <div class="an-empty" id="an-hlth-note" style="display:none;margin-top:10px">No snapshot data yet.</div>
+      <div id="an-hlth-body">
+        <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-top:10px">
+          <div class="stat-card"><div class="stat-label">Healthy</div><div class="stat-val ok" id="an-hlth-green">&mdash;</div><div class="stat-sub" id="an-hlth-greensub">&nbsp;</div></div>
+          <div class="stat-card"><div class="stat-label">Watch</div><div class="stat-val" id="an-hlth-yellow" style="color:var(--gd)">&mdash;</div><div class="stat-sub" id="an-hlth-yellowsub">&nbsp;</div></div>
+          <div class="stat-card"><div class="stat-label">At risk</div><div class="stat-val warn" id="an-hlth-red">&mdash;</div><div class="stat-sub" id="an-hlth-redsub">&nbsp;</div></div>
+          <div class="stat-card"><div class="stat-label">MRR at risk</div><div class="stat-val warn" id="an-hlth-mrrrisk">&mdash;</div><div class="stat-sub" id="an-hlth-mrrrisksub">&nbsp;</div></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><div class="card-title">At-risk accounts</div></div>
+          <table>
+            <thead><tr><th>Account</th><th>Health</th><th>Score</th><th>MRR</th><th>Primary risk</th></tr></thead>
+            <tbody id="an-hlth-tbody"><tr><td colspan="5" style="text-align:center;color:var(--mu);padding:24px">&mdash;</td></tr></tbody>
+          </table>
+          <div style="padding:12px 20px;border-top:1px solid var(--bd);font-size:.78rem;color:var(--mu);line-height:1.5">Score (0&ndash;100): activated +30, sends requests +15, gets reviews +15, integration +10, paying +25, healthy opt-out +5 (elevated &minus;10). Cancelled or past-due is always red; brand-new accounts still ramping show as watch.</div>
+        </div>
+      </div>
+
+      <!-- Expansion & plan-limit signals (P3 Part 2) -->
+      <div class="an-mv-head">
+        <span class="an-rev-label" style="margin:0">Expansion &amp; plan-limit signals</span>
+        <button class="btn btn-sm" onclick="exportAnalyticsExpansionCsv()">Export CSV</button>
+      </div>
+      <div class="an-empty" id="an-exp-note" style="display:none;margin-top:10px">No snapshot data yet.</div>
+      <div id="an-exp-body">
+        <div class="stat-row" style="grid-template-columns:repeat(3,1fr);margin-top:10px">
+          <div class="stat-card"><div class="stat-label">SMS quota 80%+</div><div class="stat-val" id="an-exp-smsnear">&mdash;</div><div class="stat-sub">approaching limit</div></div>
+          <div class="stat-card"><div class="stat-label">SMS quota reached</div><div class="stat-val warn" id="an-exp-smsover">&mdash;</div><div class="stat-sub">at or over limit</div></div>
+          <div class="stat-card"><div class="stat-label">Team seats full</div><div class="stat-val" id="an-exp-seats">&mdash;</div><div class="stat-sub">at plan seat cap</div></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><div class="card-title">Location footprint</div></div>
+          <div class="an-fn" id="an-exp-footprint"></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><div class="card-title">Upsell candidates</div></div>
+          <table>
+            <thead><tr><th>Account</th><th>Plan</th><th>Locations</th><th>SMS usage</th><th>Seats</th><th>Signal</th></tr></thead>
+            <tbody id="an-exp-tbody"><tr><td colspan="6" style="text-align:center;color:var(--mu);padding:24px">&mdash;</td></tr></tbody>
+          </table>
+          <div style="padding:12px 20px;border-top:1px solid var(--bd);font-size:.78rem;color:var(--mu);line-height:1.5">Locations bill on a graduated curve ($99 for 1&ndash;2, $89 for 3&ndash;25, $79 for 26+), so footprint is your expansion lever; SMS quota and team seats (starter 3 / growth 10 / agency unlimited) are the plan-limit upsell triggers.</div>
+        </div>
+      </div>
+
       <!-- What's next -->
       <div class="card an-next" style="margin-top:16px">
-        <div class="card-header"><div class="card-title">Reports land here next</div></div>
+        <div class="card-header"><div class="card-title">Analytics suite: Phase 3 complete</div></div>
         <div class="an-next-body">
-          Deliverability and opt-outs are live above. Next (Phase 3 Part 2): a <b>customer health scoreboard</b> (composite green / yellow / red) and <b>expansion &amp; plan-limit signals</b> &mdash; accounts at or near their location and SMS limits, the upsell candidates.
+          All three phases are live: revenue &amp; retention, activation &amp; engagement, and now deliverability, customer health, and expansion signals. Natural next steps if you want them: a <b>Support &amp; deflection</b> view (Wallabee / AI agent), <b>threshold alerts</b> (e.g. opt-out spikes or churn-risk MRR), and an <b>as-of date picker</b> to rewind the whole dashboard to any past snapshot.
         </div>
       </div>
     </div>
@@ -2344,6 +2397,8 @@ function refreshAnalytics() {
   loadAnalyticsFeatures();
   loadAnalyticsIntegrations();
   loadAnalyticsDeliverability();
+  loadAnalyticsHealth();
+  loadAnalyticsExpansion();
 }
 
 function fillAnalyticsSelect(id, values, extraPairs) {
@@ -2748,6 +2803,82 @@ function renderOptoutTrend(trend, thresh) {
 
 function exportAnalyticsDeliverabilityCsv() {
   downloadAnalyticsCsv('/admin/analytics/deliverability?format=csv', 'swarmreply-deliverability.csv');
+}
+
+// ── Analytics customer health scoreboard (P3 Part 2) ─────────────────
+async function loadAnalyticsHealth() {
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/health' + (qs ? '?' + qs : ''));
+  var note = document.getElementById('an-hlth-note'), body = document.getElementById('an-hlth-body');
+  if (!data || !data.hasData) { if (note) note.style.display = 'block'; if (body) body.style.display = 'none'; return; }
+  note.style.display = 'none'; body.style.display = 'block';
+  var bh = data.byHealth;
+  var share = function(a) { return data.total > 0 ? Math.round(a / data.total * 100) + '%' : '0%'; };
+  document.getElementById('an-hlth-green').textContent = bh.green.accounts;
+  document.getElementById('an-hlth-greensub').textContent = share(bh.green.accounts) + ' \u00b7 ' + fmtMoney(bh.green.mrr) + ' MRR';
+  document.getElementById('an-hlth-yellow').textContent = bh.yellow.accounts;
+  document.getElementById('an-hlth-yellowsub').textContent = share(bh.yellow.accounts) + ' \u00b7 ' + fmtMoney(bh.yellow.mrr) + ' MRR';
+  document.getElementById('an-hlth-red').textContent = bh.red.accounts;
+  document.getElementById('an-hlth-redsub').textContent = share(bh.red.accounts) + ' \u00b7 ' + fmtMoney(bh.red.mrr) + ' MRR';
+  document.getElementById('an-hlth-mrrrisk').textContent = fmtMoney(data.mrrAtRisk);
+  document.getElementById('an-hlth-mrrrisksub').textContent = data.totalMrr > 0 ? Math.round(data.mrrAtRisk / data.totalMrr * 100) + '% of MRR' : '\u00a0';
+  var tb = document.getElementById('an-hlth-tbody');
+  if (!data.atRisk.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gr);padding:24px">No at-risk accounts \u2014 all healthy.</td></tr>';
+  } else {
+    tb.innerHTML = data.atRisk.map(function(a) {
+      return '<tr><td>' + esc(a.name || '\u2014') + '</td>'
+        + '<td><span class="hbadge ' + a.health + '">' + a.health + '</span></td>'
+        + '<td style="font-variant-numeric:tabular-nums">' + a.score + '</td>'
+        + '<td style="font-variant-numeric:tabular-nums">' + fmtMoney(a.mrr) + '</td>'
+        + '<td style="color:var(--mu)">' + esc(a.reason) + '</td></tr>';
+    }).join('');
+  }
+}
+function exportAnalyticsHealthCsv() {
+  downloadAnalyticsCsv('/admin/analytics/health?format=csv', 'swarmreply-health.csv');
+}
+
+// ── Analytics expansion & plan-limit signals (P3 Part 2) ─────────────
+async function loadAnalyticsExpansion() {
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/expansion' + (qs ? '?' + qs : ''));
+  var note = document.getElementById('an-exp-note'), body = document.getElementById('an-exp-body');
+  if (!data || !data.hasData) { if (note) note.style.display = 'block'; if (body) body.style.display = 'none'; return; }
+  note.style.display = 'none'; body.style.display = 'block';
+  document.getElementById('an-exp-smsnear').textContent = data.smsNear;
+  document.getElementById('an-exp-smsover').textContent = data.smsOver;
+  document.getElementById('an-exp-seats').textContent = data.seatsAtLimit;
+  renderFootprint(data.footprint);
+  var tb = document.getElementById('an-exp-tbody');
+  if (!data.candidates.length) {
+    tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:24px">No accounts near a plan limit yet.</td></tr>';
+  } else {
+    tb.innerHTML = data.candidates.map(function(c) {
+      var smsTxt = c.smsLimit > 0
+        ? (c.smsSent.toLocaleString() + ' / ' + c.smsLimit.toLocaleString() + (c.smsPct !== null ? ' (' + Math.round(c.smsPct * 100) + '%)' : ''))
+        : '\u2014';
+      var seatTxt = c.seatLimit === null ? (c.seats + ' / \u221e') : (c.seats + ' / ' + c.seatLimit);
+      return '<tr><td>' + esc(c.name || '\u2014') + '</td>'
+        + '<td style="text-transform:capitalize">' + esc(c.plan || '\u2014') + '</td>'
+        + '<td style="font-variant-numeric:tabular-nums">' + c.locations + '</td>'
+        + '<td style="font-variant-numeric:tabular-nums">' + smsTxt + '</td>'
+        + '<td style="font-variant-numeric:tabular-nums">' + seatTxt + '</td>'
+        + '<td style="color:var(--mu)">' + esc(c.signal) + '</td></tr>';
+    }).join('');
+  }
+}
+function renderFootprint(footprint) {
+  var el = document.getElementById('an-exp-footprint');
+  var max = Math.max.apply(null, (footprint || []).map(function(f) { return f.count; }).concat([1]));
+  el.innerHTML = (footprint || []).map(function(f) {
+    var w = Math.round(f.count / max * 100);
+    return '<div class="an-fn-row"><div class="an-fn-top"><span class="an-fn-label">' + f.label + '</span><span class="an-fn-val">' + f.count + '</span></div>'
+      + '<div class="an-fn-bar"><span style="width:' + w + '%"></span></div></div>';
+  }).join('');
+}
+function exportAnalyticsExpansionCsv() {
+  downloadAnalyticsCsv('/admin/analytics/expansion?format=csv', 'swarmreply-expansion.csv');
 }
 
 </script>
