@@ -511,6 +511,12 @@ tr:hover td{background:#fafaf8}
         #page-analytics .an-fn-val span{color:var(--mu);font-weight:600;font-size:.78rem;margin-left:6px}
         #page-analytics .an-fn-bar{height:22px;background:var(--of);border-radius:6px;overflow:hidden}
         #page-analytics .an-fn-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--g),var(--gd));border-radius:6px}
+        #page-analytics .stat-val.ok{color:var(--gr)}
+        #page-analytics .stat-val.warn{color:var(--re)}
+        #page-analytics .an-spark{display:flex;align-items:flex-end;gap:4px;height:64px;padding:18px 20px 8px}
+        #page-analytics .an-spark .sbar{flex:1 1 auto;max-width:30px;background:var(--g);border-radius:3px 3px 0 0;min-height:3px}
+        #page-analytics .an-spark .sbar.hi{background:var(--re)}
+        #page-analytics .an-spark-cap{padding:0 20px 16px;font-size:.75rem;color:var(--mu)}
       </style>
 
       <p class="an-intro">Counts and outcomes across the customer base, sliced by the filters below. This is the foundation reports build on — Revenue, retention, and engagement views arrive in the next phases.</p>
@@ -678,11 +684,34 @@ tr:hover td{background:#fafaf8}
         </div>
       </div>
 
+      <!-- Deliverability & opt-outs (P3 Part 1) -->
+      <div class="an-mv-head">
+        <span class="an-rev-label" style="margin:0">Deliverability &amp; opt-outs</span>
+        <button class="btn btn-sm" onclick="exportAnalyticsDeliverabilityCsv()">Export CSV</button>
+      </div>
+      <div class="an-empty" id="an-dlv-note" style="display:none;margin-top:10px">No snapshot data yet.</div>
+      <div id="an-dlv-body">
+        <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-top:10px">
+          <div class="stat-card"><div class="stat-label">Opt-out rate</div><div class="stat-val" id="an-dlv-rate">&mdash;</div><div class="stat-sub" id="an-dlv-ratesub">&nbsp;</div></div>
+          <div class="stat-card"><div class="stat-label">Send-success rate</div><div class="stat-val" id="an-dlv-send">&mdash;</div><div class="stat-sub" id="an-dlv-sendsub">&nbsp;</div></div>
+          <div class="stat-card"><div class="stat-label">Opted-out contacts</div><div class="stat-val" id="an-dlv-optedout">&mdash;</div><div class="stat-sub" id="an-dlv-contactssub">&nbsp;</div></div>
+          <div class="stat-card"><div class="stat-label">Accounts with opt-outs</div><div class="stat-val" id="an-dlv-accts">&mdash;</div><div class="stat-sub">flagged for review</div></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><div class="card-title">Opt-out rate trend</div></div>
+          <div class="an-spark" id="an-dlv-spark"></div>
+          <div class="an-spark-cap" id="an-dlv-sparkcap"></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div style="padding:14px 20px;font-size:.82rem;color:var(--mu);line-height:1.55"><b style="color:var(--tx)">Why this matters:</b> a rising opt-out rate is the early-warning signal for A2P/TCPA trouble &mdash; carriers watch it, and sustained elevation can trigger message filtering. The watch line is set at <span id="an-dlv-thresh">3%</span>, above which the rate card turns red. It's a prompt to review messaging cadence and consent, not a hard limit.</div>
+        </div>
+      </div>
+
       <!-- What's next -->
       <div class="card an-next" style="margin-top:16px">
         <div class="card-header"><div class="card-title">Reports land here next</div></div>
         <div class="an-next-body">
-          Phase 2 is complete: activation, outcomes, feature adoption, and integration impact are all live above. Next (Phase 3): <b>messaging deliverability &amp; opt-outs</b> (the A2P / TCPA canary), a <b>customer health scoreboard</b>, and <b>expansion &amp; plan-limit signals</b>.
+          Deliverability and opt-outs are live above. Next (Phase 3 Part 2): a <b>customer health scoreboard</b> (composite green / yellow / red) and <b>expansion &amp; plan-limit signals</b> &mdash; accounts at or near their location and SMS limits, the upsell candidates.
         </div>
       </div>
     </div>
@@ -2314,6 +2343,7 @@ function refreshAnalytics() {
   loadAnalyticsOutcomes();
   loadAnalyticsFeatures();
   loadAnalyticsIntegrations();
+  loadAnalyticsDeliverability();
 }
 
 function fillAnalyticsSelect(id, values, extraPairs) {
@@ -2662,6 +2692,62 @@ async function loadAnalyticsIntegrations() {
 
 function exportAnalyticsIntegrationsCsv() {
   downloadAnalyticsCsv('/admin/analytics/integrations?format=csv', 'swarmreply-integrations.csv');
+}
+
+// ── Analytics deliverability & opt-outs (P3 Part 1) ──────────────────
+async function loadAnalyticsDeliverability() {
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/deliverability' + (qs ? '?' + qs : ''));
+  var note = document.getElementById('an-dlv-note');
+  var body = document.getElementById('an-dlv-body');
+  if (!data || !data.hasData) {
+    if (note) note.style.display = 'block';
+    if (body) body.style.display = 'none';
+    return;
+  }
+  note.style.display = 'none'; body.style.display = 'block';
+  var rate = document.getElementById('an-dlv-rate');
+  if (data.optOutRate === null) {
+    rate.textContent = '\u2014'; rate.className = 'stat-val';
+  } else {
+    rate.textContent = (data.optOutRate * 100).toFixed(1) + '%';
+    rate.className = 'stat-val ' + (data.flag === 'elevated' ? 'warn' : 'ok');
+  }
+  document.getElementById('an-dlv-ratesub').textContent = data.optedOut.toLocaleString() + ' of ' + data.contacts.toLocaleString() + ' contacts';
+  var send = document.getElementById('an-dlv-send');
+  send.textContent = data.send.successRate === null ? '\u2014' : (data.send.successRate * 100).toFixed(1) + '%';
+  document.getElementById('an-dlv-sendsub').textContent = data.send.failed > 0
+    ? (data.send.failed.toLocaleString() + ' failed of ' + data.send.total.toLocaleString())
+    : (data.send.total.toLocaleString() + ' requests');
+  document.getElementById('an-dlv-optedout').textContent = data.optedOut.toLocaleString();
+  document.getElementById('an-dlv-contactssub').textContent = data.contacts.toLocaleString() + ' contacts total';
+  document.getElementById('an-dlv-accts').textContent = data.accountsWithOptouts.toLocaleString();
+  document.getElementById('an-dlv-thresh').textContent = Math.round(data.watchThreshold * 100) + '%';
+  renderOptoutTrend(data.trend, data.watchThreshold);
+}
+
+function renderOptoutTrend(trend, thresh) {
+  var spark = document.getElementById('an-dlv-spark');
+  var cap = document.getElementById('an-dlv-sparkcap');
+  var pts = (trend || []).filter(function(t){ return t.rate !== null; });
+  if (pts.length < 2) {
+    spark.innerHTML = pts.length === 1
+      ? '<div class="sbar' + (pts[0].rate > thresh ? ' hi' : '') + '" style="height:100%" title="' + (pts[0].rate * 100).toFixed(1) + '%"></div>'
+      : '';
+    cap.textContent = 'Trend builds as more daily snapshots accrue.' + (pts.length === 1 ? ' Latest: ' + (pts[0].rate * 100).toFixed(1) + '%.' : '');
+    return;
+  }
+  var max = Math.max.apply(null, pts.map(function(t){ return t.rate; }).concat([thresh, 0.001]));
+  spark.innerHTML = pts.map(function(t){
+    var h = Math.max(3, Math.round(t.rate / max * 100));
+    return '<div class="sbar' + (t.rate > thresh ? ' hi' : '') + '" style="height:' + h + '%" title="' + t.date + ': ' + (t.rate * 100).toFixed(1) + '%"></div>';
+  }).join('');
+  var first = pts[0], last = pts[pts.length - 1];
+  cap.textContent = pts.length + ' days \u00b7 ' + (first.rate * 100).toFixed(1) + '% \u2192 ' + (last.rate * 100).toFixed(1) + '%';
+}
+
+function exportAnalyticsDeliverabilityCsv() {
+  downloadAnalyticsCsv('/admin/analytics/deliverability?format=csv', 'swarmreply-deliverability.csv');
 }
 
 </script>
