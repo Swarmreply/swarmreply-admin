@@ -530,6 +530,7 @@ tr:hover td{background:#fafaf8}
       <div class="card">
         <div class="card-header"><div class="card-title">Filters</div></div>
         <div class="an-grid">
+          <div class="an-field"><label>As of</label><select id="an-asOf"><option value="latest">Latest snapshot</option></select></div>
           <div class="an-field"><label>Plan</label><select id="an-plan"><option value="all">All</option></select></div>
           <div class="an-field"><label>Billing status</label><select id="an-status"><option value="all">All</option></select></div>
           <div class="an-field"><label>Paying</label><select id="an-paying"><option value="all">All</option><option value="true">Paying only</option><option value="false">Non-paying</option></select></div>
@@ -760,11 +761,43 @@ tr:hover td{background:#fafaf8}
         </div>
       </div>
 
+      <!-- Support & deflection (P4 Part 1) -->
+      <div class="an-mv-head">
+        <span class="an-rev-label" style="margin:0">Support &amp; deflection</span>
+        <button class="btn btn-sm" onclick="exportAnalyticsSupportCsv()">Export CSV</button>
+      </div>
+      <div class="an-empty" id="an-sup-note" style="display:none;margin-top:10px">No snapshot data yet.</div>
+      <div id="an-sup-body">
+        <div style="margin-top:10px;margin-bottom:6px;font-size:.78rem;color:var(--mu);font-weight:600;text-transform:uppercase;letter-spacing:.04em">AI support assistant &middot; in-app</div>
+        <div class="stat-row" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat-card"><div class="stat-label">Deflection rate</div><div class="stat-val ok" id="an-sup-ag-rate">&mdash;</div><div class="stat-sub" id="an-sup-ag-ratesub">&nbsp;</div></div>
+          <div class="stat-card"><div class="stat-label">Questions handled</div><div class="stat-val" id="an-sup-ag-total">&mdash;</div><div class="stat-sub">answered by AI</div></div>
+          <div class="stat-card"><div class="stat-label">Escalated to human</div><div class="stat-val" id="an-sup-ag-esc">&mdash;</div><div class="stat-sub" id="an-sup-ag-escsub">to the ticket form</div></div>
+        </div>
+        <div class="an-spark-cap" style="padding:8px 2px 0" id="an-sup-ag-note">Logging starts with this release &mdash; fills in as customers use the in-app assistant.</div>
+
+        <div style="margin-top:18px;margin-bottom:6px;font-size:.78rem;color:var(--mu);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Webchat &middot; Wallabee widget</div>
+        <div class="stat-row" style="grid-template-columns:repeat(4,1fr)">
+          <div class="stat-card"><div class="stat-label">Deflection rate</div><div class="stat-val ok" id="an-sup-wc-rate">&mdash;</div><div class="stat-sub" id="an-sup-wc-ratesub">&nbsp;</div></div>
+          <div class="stat-card"><div class="stat-label">Chat sessions</div><div class="stat-val" id="an-sup-wc-sessions">&mdash;</div><div class="stat-sub">total</div></div>
+          <div class="stat-card"><div class="stat-label">Escalations</div><div class="stat-val" id="an-sup-wc-esc">&mdash;</div><div class="stat-sub">handed to a human</div></div>
+          <div class="stat-card"><div class="stat-label">AI messages</div><div class="stat-val" id="an-sup-wc-aimsg">&mdash;</div><div class="stat-sub" id="an-sup-wc-msgsub">&nbsp;</div></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><div class="card-title">Webchat sessions &mdash; weekly</div></div>
+          <div class="an-spark" id="an-sup-wc-spark"></div>
+          <div class="an-spark-cap" id="an-sup-wc-sparkcap"></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div style="padding:14px 20px;font-size:.82rem;color:var(--mu);line-height:1.55"><b style="color:var(--tx)">Deflection</b> is the share the AI resolved without a human &mdash; for the assistant, questions answered vs sent to the ticket form; for webchat, sessions closed vs handed off. The in-app assistant logs from this release forward; webchat reflects all history.</div>
+        </div>
+      </div>
+
       <!-- What's next -->
       <div class="card an-next" style="margin-top:16px">
-        <div class="card-header"><div class="card-title">Analytics suite: Phase 3 complete</div></div>
+        <div class="card-header"><div class="card-title">Phase 4 &mdash; support &amp; deflection live</div></div>
         <div class="an-next-body">
-          All three phases are live: revenue &amp; retention, activation &amp; engagement, and now deliverability, customer health, and expansion signals. Natural next steps if you want them: a <b>Support &amp; deflection</b> view (Wallabee / AI agent), <b>threshold alerts</b> (e.g. opt-out spikes or churn-risk MRR), and an <b>as-of date picker</b> to rewind the whole dashboard to any past snapshot.
+          Support deflection (in-app assistant + Wallabee webchat) is now tracked above. Remaining Phase 4 pieces, in order: an <b>as-of date picker</b> to rewind the whole dashboard to any past snapshot, then <b>threshold alerts</b> (e.g. opt-out spikes or churn-risk MRR crossing a line).
         </div>
       </div>
     </div>
@@ -2375,12 +2408,15 @@ async function loadAnalytics() {
       fillAnalyticsSelect('an-source', opts.sources);
       fillAnalyticsSelect('an-integration', opts.providers, [['connected','Any connected'],['none','None connected']]);
       fillAnalyticsSelect('an-cohort', opts.cohorts);
+      fillAsOfPicker(opts.availableDates, opts.freshness);
       renderAnalyticsFreshness(opts.freshness);
     }
     ANALYTICS_FILTERS.forEach(function(f){
       var el = document.getElementById('an-' + f);
       if (el) el.addEventListener('change', refreshAnalytics);
     });
+    var asOfEl = document.getElementById('an-asOf');
+    if (asOfEl) asOfEl.addEventListener('change', function(){ updateAsOfIndicator(); refreshAnalytics(); });
     var demo = document.getElementById('an-includeDemo');
     if (demo) demo.addEventListener('change', refreshAnalytics);
   }
@@ -2399,6 +2435,7 @@ function refreshAnalytics() {
   loadAnalyticsDeliverability();
   loadAnalyticsHealth();
   loadAnalyticsExpansion();
+  loadAnalyticsSupport();
 }
 
 function fillAnalyticsSelect(id, values, extraPairs) {
@@ -2408,6 +2445,37 @@ function fillAnalyticsSelect(id, values, extraPairs) {
   (extraPairs || []).forEach(function(p){ html += '<option value="' + esc(p[0]) + '">' + esc(p[1]) + '</option>'; });
   (values || []).forEach(function(v){ if (v) html += '<option value="' + esc(v) + '">' + esc(v) + '</option>'; });
   el.innerHTML = html;
+}
+
+var _analyticsFreshness = null;
+function fillAsOfPicker(dates, freshness) {
+  _analyticsFreshness = freshness || null;
+  var el = document.getElementById('an-asOf');
+  if (!el) return;
+  var html = '<option value="latest">Latest snapshot</option>';
+  (dates || []).forEach(function(d, i){
+    var ymd = String(d).slice(0, 10);
+    var label = new Date(ymd + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    if (i === 0) label += ' (latest)';
+    html += '<option value="' + esc(ymd) + '">' + esc(label) + '</option>';
+  });
+  el.innerHTML = html;
+}
+
+function updateAsOfIndicator() {
+  var el = document.getElementById('an-asOf');
+  var pill = document.getElementById('an-freshness');
+  if (!el || !pill) return;
+  if (el.value && el.value !== 'latest') {
+    var d = new Date(el.value + 'T00:00:00');
+    var latestTxt = (_analyticsFreshness && _analyticsFreshness.latestSnapshot)
+      ? ' \u00b7 latest is ' + new Date(String(_analyticsFreshness.latestSnapshot).slice(0, 10) + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      : '';
+    pill.textContent = 'Rewound to ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + latestTxt;
+    pill.style.color = 'var(--gd)';
+  } else {
+    renderAnalyticsFreshness(_analyticsFreshness);
+  }
 }
 
 function renderAnalyticsFreshness(fr) {
@@ -2432,6 +2500,8 @@ function analyticsQueryString() {
   });
   var demo = document.getElementById('an-includeDemo');
   if (demo && demo.checked) p.set('includeDemo', 'true');
+  var asOf = document.getElementById('an-asOf');
+  if (asOf && asOf.value && asOf.value !== 'latest') p.set('asOf', asOf.value);
   return p.toString();
 }
 
@@ -2466,6 +2536,9 @@ function resetAnalyticsFilters() {
   ANALYTICS_FILTERS.forEach(function(f){ var el = document.getElementById('an-' + f); if (el) el.value = 'all'; });
   var demo = document.getElementById('an-includeDemo');
   if (demo) demo.checked = false;
+  var asOfEl = document.getElementById('an-asOf');
+  if (asOfEl) asOfEl.value = 'latest';
+  updateAsOfIndicator();
   refreshAnalytics();
 }
 
@@ -2879,6 +2952,57 @@ function renderFootprint(footprint) {
 }
 function exportAnalyticsExpansionCsv() {
   downloadAnalyticsCsv('/admin/analytics/expansion?format=csv', 'swarmreply-expansion.csv');
+}
+
+// ── Analytics support & deflection (P4 Part 1) ───────────────────────
+async function loadAnalyticsSupport() {
+  var qs = analyticsQueryString();
+  var data = await apiFetch('/admin/analytics/support' + (qs ? '?' + qs : ''));
+  var note = document.getElementById('an-sup-note'), body = document.getElementById('an-sup-body');
+  if (!data || !data.hasData) { if (note) note.style.display = 'block'; if (body) body.style.display = 'none'; return; }
+  note.style.display = 'none'; body.style.display = 'block';
+  var ag = data.agent, wc = data.webchat;
+  // In-app assistant
+  var agr = document.getElementById('an-sup-ag-rate');
+  if (ag.deflectionRate === null) {
+    agr.textContent = '\u2014'; agr.className = 'stat-val';
+    document.getElementById('an-sup-ag-ratesub').textContent = 'no questions yet';
+  } else {
+    agr.textContent = Math.round(ag.deflectionRate * 100) + '%'; agr.className = 'stat-val ok';
+    document.getElementById('an-sup-ag-ratesub').textContent = ag.total.toLocaleString() + ' questions';
+  }
+  document.getElementById('an-sup-ag-total').textContent = ag.total.toLocaleString();
+  document.getElementById('an-sup-ag-esc').textContent = ag.escalated.toLocaleString();
+  document.getElementById('an-sup-ag-escsub').textContent = ag.rateLimited > 0 ? (ag.rateLimited.toLocaleString() + ' rate-limited') : 'to the ticket form';
+  // Webchat
+  var wcr = document.getElementById('an-sup-wc-rate');
+  if (wc.deflectionRate === null) {
+    wcr.textContent = '\u2014'; wcr.className = 'stat-val';
+    document.getElementById('an-sup-wc-ratesub').textContent = 'no sessions yet';
+  } else {
+    wcr.textContent = Math.round(wc.deflectionRate * 100) + '%'; wcr.className = 'stat-val ok';
+    document.getElementById('an-sup-wc-ratesub').textContent = wc.sessions.toLocaleString() + ' sessions';
+  }
+  document.getElementById('an-sup-wc-sessions').textContent = wc.sessions.toLocaleString();
+  document.getElementById('an-sup-wc-esc').textContent = wc.escalated.toLocaleString();
+  document.getElementById('an-sup-wc-aimsg').textContent = wc.messages.bot.toLocaleString();
+  document.getElementById('an-sup-wc-msgsub').textContent = wc.messages.visitor.toLocaleString() + ' from visitors';
+  renderSupportTrend(wc.trend);
+}
+function renderSupportTrend(trend) {
+  var spark = document.getElementById('an-sup-wc-spark'), cap = document.getElementById('an-sup-wc-sparkcap');
+  var pts = trend || [];
+  if (!pts.length) { spark.innerHTML = ''; cap.textContent = 'No webchat sessions in the last 12 weeks.'; return; }
+  var max = Math.max.apply(null, pts.map(function(t) { return t.sessions; }).concat([1]));
+  spark.innerHTML = pts.map(function(t) {
+    var h = Math.max(3, Math.round(t.sessions / max * 100));
+    return '<div class="sbar" style="height:' + h + '%" title="' + t.week + ': ' + t.sessions + ' sessions, ' + t.handoffs + ' handoffs"></div>';
+  }).join('');
+  var tot = pts.reduce(function(a, t) { return a + t.sessions; }, 0);
+  cap.textContent = pts.length + ' weeks \u00b7 ' + tot.toLocaleString() + ' sessions';
+}
+function exportAnalyticsSupportCsv() {
+  downloadAnalyticsCsv('/admin/analytics/support?format=csv', 'swarmreply-support.csv');
 }
 
 </script>
